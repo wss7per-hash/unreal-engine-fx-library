@@ -682,23 +682,11 @@ QPushButton#batchbtn:hover {{ background: {panel2}; border-color: {accent}; }}
 QPushButton#batchbtn:pressed {{ background: {card_sel}; }}
 
 QFrame#header {{
-    background: qlineagradient(x1:0, y1:0, x2:1, y2:0,
-        stop:0 rgba(99,91,255,0.06), stop:1 rgba(0,163,255,0.03));
+    background: {bg2};
     border-bottom: 1px solid {border};
 }}
-/* Header brand: dark legible text (not pale). */
-QFrame#header #brand {{ color: #0f172a; font-weight: 800; font-size: 15px; }}
-QFrame#header #tagline {{ color: #334155; font-size: 12px; }}
-/* FX monogram inside header: accent-tinted pill (not the dark-hero white version). */
-QFrame#header #heromono {{
-    color: {accent};
-    background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
-        stop:0 rgba(99,91,255,0.12), stop:1 rgba(0,163,255,0.08));
-    border-radius: {{r_sm}};
-    font-size: 14px;
-    font-weight: 800;
-    padding: 2px 8px;
-}}
+QFrame#header #brand {{ color: {text}; font-weight: 700; font-size: 14px; }}
+
 QFrame#toolbar {{
     background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
         stop:0 {bg2}, stop:1 rgba(99,91,255,0.02));
