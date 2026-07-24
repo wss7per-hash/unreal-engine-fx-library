@@ -52,6 +52,82 @@ TAG_COLORS = {
     "Magic": "#a78bfa", "Smoke": "#8b94a7", "Ice": "#7fe3ff",
 }
 
+# --------------------------------------------------------------------------
+# Diagnostic logging + headless self-test (proves the frozen build's
+# click->filter->grid chain works; run FXLibraryClient.exe --selftest).
+# --------------------------------------------------------------------------
+import datetime as _dt
+_DBG_PATH = os.path.join(os.environ.get("TEMP", os.path.expanduser("~")),
+                       "fxlibrary_debug.log")
+def dbg(*a):
+    try:
+        with open(_DBG_PATH, "a", encoding="utf-8") as _f:
+            _f.write("[%s] %s\n" % (
+                _dt.datetime.now().strftime("%H:%M:%S.%f")[:-3],
+                " ".join(str(x) for x in a)))
+            _f.flush()
+    except Exception:
+        pass
+
+def _self_test():
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    import tempfile, time, traceback
+    from PySide6.QtWidgets import QApplication as _QA
+    app = _QA.instance() or _QA(sys.argv)
+    from PySide6.QtTest import QTest
+    from PySide6.QtCore import Qt
+    import app.config as _cfg
+    from app.database import Database as _DB
+    from app.models import FXAsset as _FX
+    dbg("=== SELFTEST START ===")
+    try:
+        CFGDIR = tempfile.mkdtemp(prefix="fxst_")
+        _cfg.CONFIG_DIR = CFGDIR
+        _cfg.CONFIG_FILE = os.path.join(CFGDIR, "config.json")
+        _cfg.DEFAULT_LIBRARY_DIR = os.path.join(CFGDIR, "library")
+        _cfg.DEFAULTS["library_dir"] = _cfg.DEFAULT_LIBRARY_DIR
+        win = MainWindow()
+        win.show()
+        db = _DB(win._db_path, backup=False)
+        def _mk(nm, ty, bp=False):
+            p = os.path.join(CFGDIR, nm)
+            return _FX(source_path=p, name=nm, type=ty,
+                       class_name=ty, stored_path=p, thumb_path="",
+                       size=10, imported_at="2026-01-01", source="scan",
+                       blueprint=bp, has_thumb=False, tier=4)
+        for a in (_mk("NS_Fire", "Niagara"),
+                  _mk("NS_Exp", "Niagara"),
+                  _mk("PS_Smoke", "Cascade"),
+                  _mk("BP_X", "Niagara", bp=True)):
+            db.upsert_asset(a)
+        win._reload_library()
+        fp = [a.source_path for a in win._all_assets if a.name == "NS_Fire"][0]
+        db.set_tags(fp, "fire")
+        win._reload_library()
+        chips = [c for c in win.tag_flow_widget.children()
+                 if c.__class__.__name__ == "QPushButton"
+                 and "fire" in (c.text() or "").lower()]
+        if not chips:
+            dbg("SELFTEST FAIL: no fire chip found")
+            print("SELFTEST FAIL: fire chip not found")
+            return 1
+        before = len(win.grid.assets)
+        QTest.mouseClick(chips[0], Qt.LeftButton)
+        app.processEvents()
+        after = len(win.grid.assets)
+        ok = (win._active_tag == "fire") and (after < before)
+        dbg("SELFTEST tag=%r before=%d after=%d -> %s" % (
+            win._active_tag, before, after, "PASS" if ok else "FAIL"))
+        print("SELFTEST tag=%r grid %d->%d : %s" % (
+            win._active_tag, before, after, "PASS" if ok else "FAIL"))
+        return 0 if ok else 1
+    except Exception as e:
+        dbg("SELFTEST EXCEPTION:\n" + traceback.format_exc())
+        print("SELFTEST EXCEPTION:", e)
+        return 1
+    finally:
+        dbg("=== SELFTEST END ===")
+
 
 # --------------------------------------------------------------------------
 # Lightbox dialog
@@ -620,6 +696,7 @@ class MainWindow(QMainWindow):
 
     def _set_tag_filter(self, tag):
         """Toggle the active tag filter and re-apply the grid filters."""
+        dbg("TAG_CLICK tag=%r (was %r)" % (tag, getattr(self, "_active_tag", None)))
         if self._active_tag == tag:
             self._active_tag = None
         else:
@@ -730,6 +807,7 @@ class MainWindow(QMainWindow):
 
     def _on_folder_selected(self, item, column):
         data = item.data(0, Qt.UserRole) or {}
+        dbg("FOLDER_CLICK data=%r" % (data,))
         if data.get("kind") == "hint":
             return
         # Toggle off when clicking the already selected folder
@@ -1939,6 +2017,15 @@ class MainWindow(QMainWindow):
         self._search_timer.start()
 
     def _apply_filters(self):
+        try:
+            return self._apply_filters_inner()
+        except Exception as _e:
+            import traceback as _tb
+            dbg("APPLY_FILTERS EXCEPTION:", repr(_e))
+            dbg(_tb.format_exc())
+            return
+
+    def _apply_filters_inner(self):
         q = self.search.text().strip().lower()
         t = self.type_combo.currentData()
         src = self.src_combo.currentData()
@@ -2038,6 +2125,10 @@ class MainWindow(QMainWindow):
         if self._current_asset and self._current_asset not in filtered:
             self._current_asset = None
             self._show_empty_inspector()
+        dbg("APPLY_FILTERS done: view=%r tag=%r folder=%r type=%r -> %d assets" % (
+            self._current_view, self._active_tag,
+            (self._current_folder or {}).get("id") if self._current_folder else None,
+            t, len(filtered)))
 
     def _asset_in_folder(self, asset, folder_data):
         kind = folder_data.get("kind")
@@ -3236,6 +3327,10 @@ class MainWindow(QMainWindow):
 
 
 def main():
+    if "--selftest" in sys.argv:
+        import sys as _sys
+        rc = _self_test()
+        _sys.exit(rc)
     app = QApplication(sys.argv)
     app.setStyle("Fusion")
     app.setWindowIcon(app_icon())
