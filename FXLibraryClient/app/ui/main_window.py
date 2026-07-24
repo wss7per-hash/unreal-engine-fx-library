@@ -438,7 +438,6 @@ class MainWindow(QMainWindow):
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         scroll.setFrameShape(QFrame.NoFrame)
-        scroll.setStyleSheet("background:transparent; border:none;")
         self.tag_flow_widget = QWidget()
         self.tag_flow = QVBoxLayout(self.tag_flow_widget)
         self.tag_flow.setContentsMargins(0, 0, 0, 0)

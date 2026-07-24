@@ -211,7 +211,7 @@ QPushButton#lang:hover {{ background: {panel2}; border: 1px solid {border2}; }}
 QPushButton#nav {{
     background: transparent;
     color: {muted};
-    border: none;
+    border: 1px solid transparent;
     border-radius: {{r_md}};
     padding: 5px 10px;
     font-size: 12.5px;
@@ -219,12 +219,19 @@ QPushButton#nav {{
     text-align: left;
     min-height: 26px;
 }}
-QPushButton#nav:hover {{ background: {panel2}; color: {text}; }}
+QPushButton#nav:hover {{
+    background: {panel2};
+    color: {text};
+    border-color: {border};
+}}
 QPushButton#nav:checked {{
     /* Soft indigo→cyan gradient selected state with left accent rail. */
     background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
         stop:0 rgba(99,91,255,0.14), stop:1 rgba(0,163,255,0.06));
     border-left: 3px solid {accent};
+    border-top: 1px solid {border};
+    border-right: 1px solid {border};
+    border-bottom: 1px solid {border};
     color: {accent};
     font-weight: 600;
 }}
@@ -277,6 +284,11 @@ QFrame#tagsep {{
     background: {border};
     border: none;
     max-height: 1px;
+}}
+
+QScrollArea#tagscroll {{
+    background: transparent;
+    border: none;
 }}
 
 QPushButton#act {{
@@ -704,8 +716,7 @@ QFrame#header {{
 QFrame#header #brand {{ color: {text}; font-weight: 700; font-size: 14px; }}
 
 QFrame#toolbar {{
-    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-        stop:0 {bg2}, stop:1 rgba(99,91,255,0.02));
+    background: {bg2};
     border-bottom: 1px solid {border};
 }}
 QFrame#segctl {{
