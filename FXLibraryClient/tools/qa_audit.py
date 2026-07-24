@@ -1508,6 +1508,32 @@ try:
     except Exception as e:
         bad("thumb_filter_logic", "exc %s" % e)
 
+    # ---- REGRESSION: sidebar tag-chip leak (was the real root cause of
+    # "filter / tag / folder all broken"). _clear_layout must
+    # detach children immediately (setParent(None)) so repeated
+    # _refresh_tag_browser calls don't pile orphaned widgets
+    # that overlap + intercept real clicks.
+    try:
+        _rwin = MainWindow()
+        _rwin.show()
+        def _chip_n():
+            return sum(1 for c in _rwin.tag_flow_widget.children()
+                        if c.__class__.__name__ == "QPushButton")
+        _before = _chip_n()
+        for _ in range(6):
+            _rwin._refresh_tag_browser()
+            QApplication.processEvents()
+        _after = _chip_n()
+        # smart(4) + real tags, no unbounded growth
+        if _after <= _before + 1:
+            ok("sidebar_no_leak",
+                "chips stable %d->%d after 6 refreshes" % (_before, _after))
+        else:
+            bad("sidebar_no_leak",
+                "LEAK: chips %d->%d after 6 refreshes" % (_before, _after))
+    except Exception as e:
+        bad("sidebar_no_leak", "exc %s" % e)
+
     log("=== REPORT ===")
     fails = [r for r in results if r[0] == "FAIL"]
     passes = [r for r in results if r[0] == "PASS"]

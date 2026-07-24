@@ -1286,10 +1286,24 @@ class MainWindow(QMainWindow):
             w.setEnabled(False)
 
     def _clear_layout(self, layout):
+        # Detach children IMMEDIATELY via setParent(None) BEFORE deleteLater.
+        # Relying on deleteLater() alone leaks: PyQt keeps the C++ object
+        # alive (and thus a child of the parent widget) when a Python
+        # reference or the parent still holds it, so the old widgets pile up
+        # as orphaned children across repeated refreshes -> the sidebar's
+        # tag/folder area grows unbounded and pushes real controls out of
+        # view. setParent(None) removes them from parent.children()
+        # synchronously, which is what actually stops the leak.
         while layout.count():
             item = layout.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
+            w = item.widget()
+            if w is not None:
+                w.setParent(None)
+                w.deleteLater()
+            else:
+                sub = item.layout()
+                if sub is not None:
+                    self._clear_layout(sub)
 
     def _build_batchbar(self):
         from app.style import THEMES
