@@ -592,6 +592,9 @@ class MainWindow(QMainWindow):
         tw = getattr(self, "tag_flow_widget", None)
         if tw is None:
             return
+        # Reset the chip lookup so _update_nav_checked() always points at
+        # the LIVE chips (the old ones are removed/recreated just below).
+        self._tag_chips = {}
 
         # --- clear all old widgets (no QVBoxLayout to takeFrom) ---
         for c in list(tw.children()):
@@ -686,6 +689,7 @@ class MainWindow(QMainWindow):
             chip.setChecked(self._active_tag == tag)
             chip.clicked.connect(lambda _checked, t=tag: self._set_tag_filter(t))
             _place_widget(chip, CHIP_H)
+            self._tag_chips[tag] = chip
 
         self.tag_clear_btn.setVisible(bool(self._active_tag))
         tw.setFixedSize(FW, y)
@@ -693,6 +697,49 @@ class MainWindow(QMainWindow):
     def _size_tag_flow_to_content(self):
         # Kept as no-op stub; manual positioning handles sizing inline now.
         pass
+
+    def _refresh_grid(self):
+        """Apply current filters and repaint the grid.
+
+        Safe to call directly from any click handler. Any exception is logged
+        to the diagnostic file instead of being swallowed, so a future
+        failure is never silent again.
+        """
+        try:
+            self._apply_filters()
+        except Exception as e:
+            import traceback as _tb
+            dbg("ERR _apply_filters: %r\n%s" % (e, _tb.format_exc()))
+
+    def _update_nav_checked(self):
+        """Toggle only the checked-state of existing sidebar chips — no rebuild.
+
+        Rebuilding the whole tag browser on every click (DB query +
+        recreating every chip) was the real root cause of "click does nothing
+        until I click a toolbar widget": it blocked the event loop for
+        seconds, starving the deferred _apply_filters() and the grid repaint.
+        This path is O(#chips) and instant, and never touches the DB.
+        """
+        for t, chip in getattr(self, "_tag_chips", {}).items():
+            try:
+                chip.setChecked(t == self._active_tag)
+            except Exception:
+                pass
+        for k in ("has_thumb", "no_thumb", "fav", "no_tag"):
+            chip = getattr(self, "nav_" + k, None)
+            if chip is not None:
+                try:
+                    chip.setChecked(self._current_view == k)
+                except Exception:
+                    pass
+        try:
+            self.tag_clear_btn.setVisible(bool(self._active_tag))
+        except Exception:
+            pass
+        try:
+            self._sync_nav()
+        except Exception as e:
+            dbg("ERR _sync_nav: %r" % e)
 
     def _set_tag_filter(self, tag):
         """Toggle the active tag filter and re-apply the grid filters."""
@@ -705,15 +752,13 @@ class MainWindow(QMainWindow):
         self._current_cat = None
         self._current_folder = None
         self.folder_tree.clearSelection()
-        self._sync_nav()
-        self._refresh_tag_browser()
-        # Defer the grid refresh to the next frame. Rebuilding the whole
-        # sidebar above (setParent/deleteLater + layout) disturbs Qt's paint
-        # scheduling, so an immediate _apply_filters() schedules a paint
-        # that never fires until another widget is clicked. singleShot(0)
-        # runs _apply_filters() after the rebuild settles, so the filtered
-        # grid repaints right away.
-        QTimer.singleShot(0, self._apply_filters)
+        # Lightweight: only toggle checked-state of the existing chips.
+        # Rebuilding the ENTIRE sidebar here (DB query + recreating every
+        # chip) blocked the event loop for seconds and starved the grid
+        # repaint — which is why clicks "did nothing" until a toolbar
+        # widget was clicked. We never rebuild on a plain click anymore.
+        self._update_nav_checked()
+        self._refresh_grid()
 
     def _refresh_sidebar_stats(self):
         """Keep the brand/stat hero card in sync with the loaded library."""
@@ -822,17 +867,15 @@ class MainWindow(QMainWindow):
             self._current_folder = None
             self._current_view = "all"
             self._current_cat = None
-            self._sync_nav()
-            self._apply_filters()
+            self._update_nav_checked()
+            self._refresh_grid()
             return
         self._current_folder = data
         self._current_view = "all"
         self._current_cat = None
         self._active_tag = None
-        self._sync_nav()
-        self._refresh_tag_browser()
-        # Defer grid refresh (see _set_tag_filter for why).
-        QTimer.singleShot(0, self._apply_filters)
+        self._update_nav_checked()
+        self._refresh_grid()
 
     def _deselect_folder(self):
         """Clear folder selection and return to the All view."""
@@ -844,10 +887,8 @@ class MainWindow(QMainWindow):
         self._current_view = "all"
         self._current_cat = None
         self._active_tag = None
-        self._sync_nav()
-        self._refresh_tag_browser()
-        # Defer grid refresh (see _set_tag_filter for why).
-        QTimer.singleShot(0, self._apply_filters)
+        self._update_nav_checked()
+        self._refresh_grid()
 
     def _on_folder_tree_context(self, pos):
         item = self.folder_tree.itemAt(pos)
@@ -1993,10 +2034,8 @@ class MainWindow(QMainWindow):
         self._current_folder = None
         self._active_tag = None
         self.folder_tree.clearSelection()
-        self._sync_nav()
-        self._refresh_tag_browser()
-        # Defer grid refresh (see _set_tag_filter for why).
-        QTimer.singleShot(0, self._apply_filters)
+        self._update_nav_checked()
+        self._refresh_grid()
         # Update batch bar for trash view
         self._on_selection_changed(len(self.grid._selected))
 
@@ -2009,10 +2048,8 @@ class MainWindow(QMainWindow):
         self._current_folder = None
         self._active_tag = None
         self.folder_tree.clearSelection()
-        self._sync_nav()
-        self._refresh_tag_browser()
-        # Defer grid refresh (see _set_tag_filter for why).
-        QTimer.singleShot(0, self._apply_filters)
+        self._update_nav_checked()
+        self._refresh_grid()
 
     @staticmethod
     def _set_combo_by_data(combo, data):
@@ -2513,9 +2550,11 @@ class MainWindow(QMainWindow):
             self.db.set_tags(self._current_asset.source_path, self._current_asset.tags)
             self.insp_tag_input.clear()
             self._show_inspector(self._current_asset)
-            self._refresh_tag_browser()
-            # Defer grid refresh (see _set_tag_filter for why).
-            QTimer.singleShot(0, self._apply_filters)
+            try:
+                self._refresh_tag_browser()
+            except Exception as e:
+                dbg("ERR _refresh_tag_browser: %r" % e)
+            self._refresh_grid()
 
     def _remove_tag(self, tag):
         if not self._current_asset:
@@ -2525,9 +2564,11 @@ class MainWindow(QMainWindow):
         self._current_asset.tags = ",".join(tags)
         self.db.set_tags(self._current_asset.source_path, self._current_asset.tags)
         self._show_inspector(self._current_asset)
-        self._refresh_tag_browser()
-        # Defer grid refresh (see _set_tag_filter for why).
-        QTimer.singleShot(0, self._apply_filters)
+        try:
+            self._refresh_tag_browser()
+        except Exception as e:
+            dbg("ERR _refresh_tag_browser: %r" % e)
+        self._refresh_grid()
 
     def _on_note_changed(self):
         if not self._current_asset:
