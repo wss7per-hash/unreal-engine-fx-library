@@ -374,59 +374,35 @@ class MainWindow(QMainWindow):
     def _is_in_title_bar(self, pos):
         """Check if a position is within a draggable area of the window.
 
-        Drag zone includes:
+        Drag zone includes ONLY:
         1. The custom title bar (34px)
-        2. The toolbar area below it (~80px)
-        3. Any non-interactive background area (plain QFrame/QWidget with no
-           objectName that suggests interactivity)
+        2. The toolbar area below it
+
+        We do NOT classify generic background widgets as draggable because
+        childAt() may return a container widget (e.g. the QVBoxLayout's
+        parent QWidget) that sits *behind* interactive children like tag
+        chips.  Classifying such containers as draggable would steal mouse
+        clicks from the buttons they contain — which is exactly why tag
+        filtering broke after the previous over-expansion.
         """
+        global_pos = self.mapToGlobal(pos)
+
         # Zone 1: custom title bar
         if hasattr(self, 'title_bar'):
             tb_geom = self.title_bar.geometry()
             tb_top_left = self.title_bar.mapToGlobal(QPoint(0, 0))
             global_rect = QRect(tb_top_left.x(), tb_top_left.y(),
                                 tb_geom.width(), tb_geom.height())
-            global_pos = self.mapToGlobal(pos)
             if global_rect.contains(global_pos):
                 return True
 
-        # Zone 2: toolbar area (below title bar, up to ~120px from top)
+        # Zone 2: toolbar area (below title bar)
         if hasattr(self, 'toolbar') and self.toolbar.isVisible():
             tb_geom = self.toolbar.geometry()
             tb_top_left = self.toolbar.mapToGlobal(QPoint(0, 0))
             global_rect = QRect(tb_top_left.x(), tb_top_left.y(),
                                 tb_geom.width(), tb_geom.height())
-            global_pos = self.mapToGlobal(pos)
             if global_rect.contains(global_pos):
-                return True
-
-        # Zone 3: non-interactive background areas
-        # Use childAt to find what widget is at this position.
-        # If it's a "background" type widget (not a button, line edit, etc.),
-        # allow dragging from it.
-        child = self.childAt(pos)
-        if child is not None:
-            obj_name = child.objectName() or ""
-            child_cls = child.__class__.__name__
-            # Non-interactive widgets that should support drag-to-move
-            passive_widgets = {
-                'QFrame', 'QWidget', 'QScrollArea', 'QSplitter',
-                'QVBoxLayout', 'QHBoxLayout', 'QStackedWidget',
-            }
-            # Interactive objectNames that should NOT be draggable
-            interactive_names = {
-                'toolbarprimary', 'act', 'icon', 'iconghost', 'nav',
-                'tag', 'tagchipbar', 'libbtn', 'sfbtn', 'secondary',
-                'seg', 'lang', 'star', 'cardfav', 'cardcheck',
-                'batchbtn', 'batchbtnprimary', 'batchbtndanger',
-                'inspexp', 'winctl', 'winclose', 'primary', 'danger',
-            }
-            if (child_cls in passive_widgets
-                    and obj_name not in interactive_names
-                    and not isinstance(child, QPushButton)
-                    and not isinstance(child, QLineEdit)
-                    and not isinstance(child, QComboBox)
-                    and not isinstance(child, QLabel)):  # exclude labels with click handlers
                 return True
 
         return False
@@ -715,7 +691,7 @@ class MainWindow(QMainWindow):
             chip.clicked.connect(lambda _checked, k=view_key: self._set_view(k))
             return chip
 
-        # --- Smart-filter chips: thumbnails / favorites ---
+        # --- Smart-filter chips: thumbnails / favorites / untagged ---
         self.nav_thumb = _make_chip(tr("has_thumb"), "thumbnail", "has_thumb")
         self.nav_nothumb = _make_chip(tr("no_thumb"), "no_thumb", "no_thumb")
         self.nav_fav = _make_chip(tr("favorites"), "fav", "fav")
@@ -723,22 +699,21 @@ class MainWindow(QMainWindow):
         self.tag_flow.addWidget(self.nav_nothumb)
         self.tag_flow.addWidget(self.nav_fav)
 
-        # separator between smart filters and tag filters
-        sep1 = QFrame()
-        sep1.setObjectName("tagsep")
-        self.tag_flow.addWidget(sep1)
-
-        # --- "未标签" pseudo-tag chip ---
+        # --- "未标签" pseudo-tag — lives with smart filters, NOT with real tags ---
         notag_count = self.db.untagged_count()
         self.nav_notag = _make_chip(
             tr("no_tag"), "tag", "no_tag",
             "%s · %d %s" % (tr("no_tag"), notag_count, tr("tag_count_suffix")))
         self.tag_flow.addWidget(self.nav_notag)
 
-        # separator between 未标签 and real tags
-        sep2 = QFrame()
-        sep2.setObjectName("tagsep")
-        self.tag_flow.addWidget(sep2)
+        # separator between smart filters and real tags
+        sep1 = QFrame()
+        sep1.setObjectName("tagsep")
+        self.tag_flow.addWidget(sep1)
+
+        # --- Section header for real tags ---
+        tag_title = self._nav_title(tr("tags"))
+        self.tag_flow.addWidget(tag_title)
 
         # --- Real tag chips ---
         tags = self.db.all_tags_with_counts()

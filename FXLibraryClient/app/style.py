@@ -801,7 +801,7 @@ QFrame#sidehero {{
 }}
 QLabel#heromono {{
     color: {accent};
-    background: {accent_tint};
+    background: transparent;
     border-radius: {{r_sm}};
     font-size: 14px;
     font-weight: 800;
@@ -811,19 +811,23 @@ QLabel#herolib {{
     color: {text};
     font-size: 12px;
     font-weight: 600;
+    background: transparent;
 }}
 QLabel#herostat {{
     color: {text};
     font-size: 28px;
     font-weight: 800;
+    background: transparent;
 }}
 QLabel#herosuB {{
     color: {muted};
     font-size: 12px;
+    background: transparent;
 }}
 QLabel#herometa {{
     color: {muted2};
     font-size: 11px;
+    background: transparent;
 }}
 """
 
