@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FX Library · 特效库管理 · Prototype</title>
+<style>
+  :root{
+    /* ---- Stripe-inspired LIGHT theme ---- */
+    --bg:#f6f8fb; --bg2:#ffffff; --panel:#ffffff; --panel2:#f1f4f9;
+    --card:#ffffff; --card-hover:#ffffff; --border:#e6e9ef; --border2:#d3d9e3;
+    --text:#0a2540; --muted:#5a6b82; --muted2:#8a98ad;
+    --accent:#635bff; --accent2:#0073e6; --accent-grad:linear-gradient(135deg,#635bff,#00a3ff);
+    --amber:#f5a623; --green:#1aa179; --red:#e25950; --purple:#7a5af8;
+    --shadow:0 1px 3px rgba(10,37,64,.06),0 14px 34px rgba(10,37,64,.10);
+    --radius:14px;
+    --font:"Inter","Segoe UI",system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+  }
+  /* ---- DARK theme override ---- */
+  body.dark{
+    --bg:#0e1116; --bg2:#161b22; --panel:#161b22; --panel2:#1c222b;
+    --card:#1a2029; --card-hover:#20272f; --border:#272e38; --border2:#333c48;
+    --text:#e6edf3; --muted:#9aa7b5; --muted2:#6b7785;
+    --shadow:0 1px 3px rgba(0,0,0,.4),0 14px 34px rgba(0,0,0,.55);
+  }
+  body.dark header{background:rgba(20,25,32,.92);border-bottom-color:var(--border)}
+  body.dark .search input{background:var(--bg2)}
+  body.dark .lang,.body.dark .filter-select select{background:var(--bg2)}
+  body.dark .icon-btn,.body.dark .tag-chip{background:var(--bg2)}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{font-family:var(--font);background:var(--bg);color:var(--text);overflow:hidden;
+    -webkit-font-smoothing:antialiased;font-size:13px}
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-thumb{background:#cdd5e0;border-radius:8px;border:2px solid transparent;background-clip:content-box}
+  ::-webkit-scrollbar-thumb:hover{background:#b6c0cf;background-clip:content-box}
+
+  .app{display:grid;grid-template-rows:56px 1fr;height:100vh}
+
+  /* ---------- header ---------- */
+  header{display:flex;align-items:center;gap:18px;padding:0 18px;
+    background:rgba(255,255,255,.86);backdrop-filter:blur(10px);border-bottom:1px solid var(--border)}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.3px}
+  .brand .logo{width:30px;height:30px;border-radius:9px;background:var(--accent-grad);
+    display:grid;place-items:center;box-shadow:0 4px 14px rgba(99,91,255,.35)}
+  .brand .logo svg{width:18px;height:18px}
+  .brand small{font-weight:500;color:var(--muted);font-size:11px;display:block;margin-top:-2px}
+  .proj-pill{display:flex;align-items:center;gap:8px;background:var(--panel2);
+    border:1px solid var(--border);padding:6px 12px;border-radius:20px;font-size:12px}
+  .proj-pill .dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 8px rgba(26,161,121,.6)}
+  .proj-pill b{color:var(--text)} .proj-pill span{color:var(--muted)}
+  .search{flex:1;max-width:420px;position:relative}
+  .search input{width:100%;background:var(--bg2);border:1px solid var(--border);
+    border-radius:10px;padding:9px 12px 9px 34px;color:var(--text);font-size:13px;outline:none;transition:.15s}
+  .search input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(99,91,255,.14)}
+  .search svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:var(--muted)}
+  .head-right{display:flex;align-items:center;gap:10px;margin-left:auto}
+  .lang{display:flex;background:var(--bg2);border:1px solid var(--border);border-radius:9px;overflow:hidden}
+  .lang button{background:none;border:none;color:var(--muted);padding:7px 11px;cursor:pointer;font-size:12px;font-family:var(--font)}
+  .lang button.active{background:var(--accent);color:#fff}
+  .icon-btn{width:36px;height:36px;border-radius:10px;background:var(--bg2);border:1px solid var(--border);
+    display:grid;place-items:center;cursor:pointer;color:var(--muted);transition:.15s}
+  .icon-btn:hover{color:var(--accent);border-color:var(--border2);background:var(--panel2)}
+
+  /* ---------- body grid ---------- */
+  .body{display:grid;grid-template-columns:236px 1fr 320px;min-height:0}
+
+  /* ---------- sidebar ---------- */
+  .sidebar{background:var(--bg2);border-right:1px solid var(--border);padding:14px 12px;overflow-y:auto}
+  .nav-group{margin-bottom:18px}
+  .nav-title{font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted2);
+    padding:0 10px;margin-bottom:8px;font-weight:700}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:9px;cursor:pointer;
+    color:var(--muted);font-size:13px;transition:.12s;position:relative}
+  .nav-item svg{width:16px;height:16px;flex:none}
+  .nav-item:hover{background:var(--panel2);color:var(--text)}
+  .nav-item.active{background:rgba(99,91,255,.10);color:var(--accent);font-weight:600}
+  .nav-item.active::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:3px;border-radius:3px;background:var(--accent)}
+  .nav-item .count{margin-left:auto;font-size:11px;color:var(--muted2);background:var(--panel2);padding:1px 7px;border-radius:8px}
+  .tag-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:8px;font-size:12px;
+    background:var(--bg2);border:1px solid var(--border);color:var(--muted);cursor:pointer;margin:0 6px 6px 0;transition:.12s}
+  .tag-chip:hover{border-color:var(--accent);color:var(--accent)}
+  .tag-chip.on{border-color:var(--accent);background:rgba(99,91,255,.10);color:var(--accent);font-weight:600}
+  .tag-chip .sw{width:8px;height:8px;border-radius:3px}
+  .tags-wrap{padding:0 4px}
+
+  /* ---------- main ---------- */
+  .main{display:flex;flex-direction:column;min-width:0;background:var(--bg)}
+  .toolbar{display:flex;align-items:center;gap:8px;padding:12px 18px;border-bottom:1px solid var(--border);
+    background:var(--bg2);flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:7px;padding:8px 13px;border-radius:9px;font-size:12.5px;
+    font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--bg2);color:var(--text);transition:.13s;font-family:var(--font)}
+  .btn svg{width:15px;height:15px}
+  .btn:hover{border-color:var(--border2);background:var(--panel2)}
+  .btn.primary{background:var(--accent-grad);border:none;color:#fff;box-shadow:0 4px 14px rgba(99,91,255,.28)}
+  .btn.primary:hover{filter:brightness(1.06)}
+  .btn.ghost{background:transparent}
+  .btn.active-sel{background:var(--accent);border-color:var(--accent);color:#fff}
+  .tb-sep{width:1px;height:24px;background:var(--border);margin:0 4px}
+  .spacer{flex:1}
+  .filter-select{position:relative}
+  .filter-select select{appearance:none;background:var(--bg2);border:1px solid var(--border);color:var(--muted);
+    padding:7px 28px 7px 12px;border-radius:9px;font-size:12.5px;cursor:pointer;font-family:var(--font)}
+  .filter-select::after{content:"";position:absolute;right:11px;top:50%;transform:translateY(-30%) rotate(45deg);
+    width:5px;height:5px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);pointer-events:none}
+  .filter-select select:focus{outline:none;border-color:var(--accent)}
+
+  .content{flex:1;overflow-y:auto;padding:18px}
+  .section-head{display:flex;align-items:baseline;gap:10px;margin-bottom:14px}
+  .section-head h2{font-size:16px;font-weight:700}
+  .section-head .sub{color:var(--muted);font-size:12px}
+  .sel-hint{margin-left:auto;font-size:12px;color:var(--accent);background:rgba(99,91,255,.10);
+    padding:4px 11px;border-radius:8px;display:none}
+  body.select-mode .sel-hint{display:inline-block}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:16px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;
+    cursor:pointer;transition:.16s;position:relative}
+  .card:hover{transform:translateY(-3px);border-color:var(--border2);box-shadow:var(--shadow);background:var(--card-hover)}
+  .card.selected{border-color:var(--accent);box-shadow:0 0 0 2px rgba(99,91,255,.30)}
+  .card.in-select{box-shadow:0 0 0 2px var(--accent)}
+  .thumb{height:128px;position:relative;display:grid;place-items:center;overflow:hidden}
+  .thumb .glyph{width:54px;height:54px;opacity:.95;filter:drop-shadow(0 4px 10px rgba(0,0,0,.25))}
+  .tier-badge{position:absolute;top:8px;left:8px;font-size:10px;font-weight:700;padding:3px 8px;border-radius:7px;
+    background:rgba(10,20,30,.55);backdrop-filter:blur(4px);color:#fff;border:1px solid rgba(255,255,255,.18)}
+  .tier-badge.t1{color:#9fe7ff} .tier-badge.t2{color:#ffd591} .tier-badge.t3{color:#d6c4ff}
+  .check{position:absolute;top:8px;left:8px;width:26px;height:26px;border-radius:8px;background:rgba(255,255,255,.9);
+    border:2px solid rgba(255,255,255,.9);display:none;place-items:center;cursor:pointer;z-index:4;
+    box-shadow:0 2px 8px rgba(10,37,64,.18)}
+  .check svg{width:15px;height:15px;color:#fff;opacity:0;transition:.12s}
+  .check.on{background:var(--accent);border-color:var(--accent)}
+  .check.on svg{opacity:1}
+  body.select-mode .check{display:grid}
+  .fav-btn{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:8px;background:rgba(10,20,30,.45);
+    border:1px solid rgba(255,255,255,.15);display:grid;place-items:center;cursor:pointer;color:#fff;backdrop-filter:blur(4px);z-index:3}
+  .fav-btn.on{color:var(--amber)} .fav-btn:hover{color:var(--amber)}
+  .fav-btn svg{width:15px;height:15px}
+  body.select-mode .fav-btn{display:none}
+  .hover-actions{position:absolute;inset:auto 0 0 0;display:flex;gap:6px;padding:8px;
+    background:linear-gradient(0deg,rgba(8,12,20,.78),transparent);opacity:0;transform:translateY(8px);transition:.16s}
+  .card:hover .hover-actions{opacity:1;transform:translateY(0)}
+  body.select-mode .hover-actions{display:none}
+  .hover-actions .ha{flex:1;text-align:center;font-size:11px;font-weight:600;padding:6px;border-radius:7px;
+    background:rgba(255,255,255,.16);color:#fff;cursor:pointer;backdrop-filter:blur(4px)}
+  .hover-actions .ha:hover{background:var(--accent)}
+  .card-body{padding:11px 12px}
+  .card-name{font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .card-meta{display:flex;align-items:center;gap:7px;margin-top:6px;color:var(--muted);font-size:11.5px}
+  .type-chip{font-size:10.5px;padding:2px 7px;border-radius:6px;font-weight:600}
+  .type-niagara{background:rgba(99,91,255,.12);color:#635bff}
+  .type-cascade{background:rgba(122,90,248,.12);color:#7a5af8}
+  .type-blueprint{background:rgba(26,161,121,.14);color:#1aa179}
+  .type-material{background:rgba(245,166,35,.16);color:#c9881a}
+  .health-dot{width:8px;height:8px;border-radius:50%;flex:none}
+  .health-ok{background:var(--green);box-shadow:0 0 6px rgba(26,161,121,.6)}
+  .health-warn{background:var(--amber);box-shadow:0 0 6px rgba(245,166,35,.6)}
+  .health-bad{background:var(--red);box-shadow:0 0 6px rgba(226,89,80,.6)}
+
+  /* ---------- inspector ---------- */
+  .inspector{background:var(--bg2);border-left:1px solid var(--border);padding:0;overflow-y:auto;display:flex;flex-direction:column}
+  .insp-hero{height:170px;position:relative;display:grid;place-items:center;border-bottom:1px solid var(--border);cursor:zoom-in}
+  .insp-hero .glyph{width:72px;height:72px;filter:drop-shadow(0 6px 16px rgba(0,0,0,.28))}
+  .insp-hero .tier{position:absolute;top:12px;left:12px}
+  .insp-pad{padding:16px 16px 22px}
+  .insp-title{font-size:17px;font-weight:700;line-height:1.3}
+  .insp-sub{color:var(--muted);font-size:12px;margin-top:4px;word-break:break-all}
+  .row{display:flex;align-items:center;gap:8px;margin-top:14px;font-size:12.5px}
+  .row .k{color:var(--muted2);width:74px;flex:none;font-size:11.5px;text-transform:uppercase;letter-spacing:.5px}
+  .row .v{color:var(--text)}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+  .chip{font-size:11px;padding:3px 9px;border-radius:7px;background:var(--panel2);border:1px solid var(--border);color:var(--muted)}
+  .dep-list{margin-top:6px;border:1px solid var(--border);border-radius:9px;overflow:hidden}
+  .dep-list .dep{display:flex;align-items:center;gap:8px;padding:8px 10px;font-size:12px;border-bottom:1px solid var(--border);background:var(--bg2)}
+  .dep-list .dep:last-child{border-bottom:none}
+  .dep-list .dep .dt{width:7px;height:7px;border-radius:2px;background:var(--accent)}
+  .health-bar{display:flex;align-items:center;gap:8px;margin-top:6px;font-size:12.5px}
+  .health-pill{font-size:11px;font-weight:700;padding:3px 10px;border-radius:8px}
+  .hp-ok{background:rgba(26,161,121,.12);color:var(--green)}
+  .hp-warn{background:rgba(245,166,35,.14);color:#c9881a}
+  .hp-bad{background:rgba(226,89,80,.12);color:var(--red)}
+  .notes{margin-top:6px;width:100%;min-height:64px;background:var(--bg2);border:1px solid var(--border);border-radius:9px;
+    padding:9px;color:var(--muted);font-size:12px;resize:none;font-family:var(--font)}
+  .notes:focus{outline:none;border-color:var(--accent)}
+  .insp-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px}
+  .insp-actions .btn{justify-content:center}
+  .insp-actions .full{grid-column:1/3}
+  .empty{display:grid;place-items:center;height:100%;color:var(--muted2);text-align:center;gap:10px}
+  .empty svg{width:46px;height:46px;opacity:.4}
+
+  .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);background:#0a2540;
+    color:#fff;padding:11px 18px;border-radius:11px;font-size:13px;
+    box-shadow:0 16px 40px rgba(10,37,64,.3);opacity:0;pointer-events:none;transition:.25s;z-index:50}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  /* ---------- batch action bar ---------- */
+  .batchbar{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(24px);
+    background:#fff;border:1px solid var(--border2);box-shadow:var(--shadow);border-radius:14px;
+    padding:10px 14px;display:flex;align-items:center;gap:12px;opacity:0;pointer-events:none;transition:.22s;z-index:60}
+  .batchbar.show{opacity:1;pointer-events:auto;transform:translateX(-50%) translateY(0)}
+  .batchbar .bc-count{font-weight:700;color:var(--accent);font-size:13px}
+  .batchbar .bc-sep{width:1px;height:22px;background:var(--border)}
+
+  /* ---------- lightbox ---------- */
+  .lightbox{position:fixed;inset:0;background:rgba(10,37,64,.5);backdrop-filter:blur(6px);
+    display:none;place-items:center;z-index:80;opacity:0;transition:.2s}
+  .lightbox.show{display:grid;opacity:1}
+  .lb-card{background:#fff;border-radius:18px;padding:22px;max-width:600px;width:92%;
+    box-shadow:0 30px 80px rgba(10,37,64,.4);text-align:center;position:relative}
+  .lb-hero{height:320px;border-radius:14px;display:grid;place-items:center;margin-bottom:16px;position:relative}
+  .lb-hero .glyph{width:130px;height:130px;filter:drop-shadow(0 12px 30px rgba(0,0,0,.22))}
+  .lb-hero .tier{position:absolute;top:12px;left:12px}
+  .lb-close{position:absolute;top:14px;right:14px;width:32px;height:32px;border-radius:9px;background:rgba(10,20,30,.5);
+    border:none;color:#fff;cursor:pointer;display:grid;place-items:center}
+  .lb-close:hover{background:rgba(10,20,30,.7)}
+  .lb-close svg{width:16px;height:16px}
+  .lb-title{font-size:20px;font-weight:700;color:var(--text)}
+  .lb-sub{color:var(--muted);font-size:13px;margin-top:6px;word-break:break-all}
+  .lb-meta{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:12px}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- HEADER -->
+  <header>
+    <div class="brand">
+      <div class="logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/>
+          <circle cx="12" cy="12" r="3.2" fill="#fff" stroke="none"/>
+        </svg>
+      </div>
+      <div>FX Library<small data-i18n="tagline">特效库管理 · Prototype</small></div>
+    </div>
+
+    <div class="proj-pill">
+      <span class="dot"></span>
+      <b data-i18n="project">项目</b> <span>MyProjecttest1wb</span>
+      <span style="color:var(--muted2)">·</span>
+      <span>UE 5.4</span>
+    </div>
+
+    <div class="search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
+      <input id="searchInput" data-i18n-ph="search_ph" placeholder="搜索特效、标签或路径…" oninput="applyFilters()">
+    </div>
+
+    <div class="head-right">
+      <div class="icon-btn" id="themeBtn" title="切换主题" onclick="toggleTheme()">
+        <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a6.5 6.5 0 0 0 9.8 9.8z"/></svg>
+      </div>
+      <div class="lang">
+        <button id="langZh" class="active" onclick="setLang('zh')">中</button>
+        <button id="langEn" onclick="setLang('en')">EN</button>
+      </div>
+      <div class="icon-btn" title="Settings" onclick="toast('Settings')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.6-2-3.4-2.4 1a7 7 0 0 0-2-1.2L16 2H8l-.5 2.6a7 7 0 0 0-2 1.2l-2.4-1-2 3.4 2 1.6A7 7 0 0 0 3 12a7 7 0 0 0 .1 1.2l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 2 1.2L8 22h8l.5-2.6a7 7 0 0 0 2-1.2l2.4 1 2-3.4-2-1.6A7 7 0 0 0 19 12z"/></svg>
+      </div>
+    </div>
+  </header>
+
+  <!-- BODY -->
+  <div class="body">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="nav-group">
+        <div class="nav-title" data-i18n="library">库</div>
+        <div class="nav-item active" data-view="all" onclick="setView('all',this)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          <span data-i18n="all_fx">全部特效</span><span class="count" id="cntAll">0</span>
+        </div>
+        <div class="nav-item" data-view="fav" onclick="setView('fav',this)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 17.3 6.2 21l1.5-6.5L2 9.2l6.6-.6L12 2.5l3.4 6.1 6.6.6-5.7 5.3L17.8 21z"/></svg>
+          <span data-i18n="favorites">收藏</span><span class="count" id="cntFav">0</span>
+        </div>
+        <div class="nav-item" data-view="local" onclick="setView('local',this)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h18v13H3z"/><path d="M8 7V5h8v2"/></svg>
+          <span data-i18n="local_cache">本地缓存</span><span class="count" id="cntLocal">0</span>
+        </div>
+        <div class="nav-item" data-view="imported" onclick="setView('imported',this)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 21h16"/></svg>
+          <span data-i18n="imported">已导入</span><span class="count" id="cntImp">0</span>
+        </div>
+      </div>
+
+      <div class="nav-group">
+        <div class="nav-title" data-i18n="category">类型</div>
+        <div class="nav-item" data-cat="Niagara" onclick="setCat('Niagara',this)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+          <span data-i18n="niagara">Niagara 系统</span><span class="count" id="cntNiagara">0</span>
+        </div>
+        <div class="nav-item" data-cat="Cascade" onclick="setCat('Cascade',this)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2c4 5 4 8 0 11-4-3-4-6 0-11zM12 13c4 5 4 8 0 11-4-3-4-6 0-11z"/></svg>
+          <span data-i18n="cascade">Cascade 粒子</span><span class="count" id="cntCascade">0</span>
+        </div>
+        <div class="nav-item" data-cat="Blueprint" onclick="setCat('Blueprint',this)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3h6v4H9zM9 17h6v4H9zM12 7v10"/></svg>
+          <span data-i18n="blueprint">蓝图</span><span class="count" id="cntBlueprint">0</span>
+        </div>
+        <div class="nav-item" data-cat="Material" onclick="setCat('Material',this)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 3 8l9 5 9-5zM3 16l9 5 9-5"/></svg>
+          <span data-i18n="material">材质</span><span class="count" id="cntMaterial">0</span>
+        </div>
+      </div>
+
+      <div class="nav-group">
+        <div class="nav-title" data-i18n="tags">标签</div>
+        <div class="tags-wrap">
+          <span class="tag-chip" onclick="toggleTag('Fire')"><span class="sw" style="background:#ff6b3d"></span>Fire</span>
+          <span class="tag-chip" onclick="toggleTag('Water')"><span class="sw" style="background:#3da5ff"></span>Water</span>
+          <span class="tag-chip" onclick="toggleTag('Explosion')"><span class="sw" style="background:#ffb03d"></span>Explosion</span>
+          <span class="tag-chip" onclick="toggleTag('Magic')"><span class="sw" style="background:#a78bfa"></span>Magic</span>
+          <span class="tag-chip" onclick="toggleTag('Smoke')"><span class="sw" style="background:#8b94a7"></span>Smoke</span>
+          <span class="tag-chip" onclick="toggleTag('Ice')"><span class="sw" style="background:#7fe3ff"></span>Ice</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main">
+      <div class="toolbar">
+        <button class="btn" onclick="toast('Open Project…')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h6l2 2h10v10H3z"/></svg>
+          <span data-i18n="open_proj">打开项目</span>
+        </button>
+        <button class="btn" onclick="toast('Refreshed')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v5h-5"/></svg>
+          <span data-i18n="refresh">刷新列表</span>
+        </button>
+        <button class="btn ghost" id="selBtn" onclick="toggleSelectMode()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 5h2v2H3zM3 11h2v2H3zM3 17h2v2H3zM8 6h13M8 12h13M8 18h13"/></svg>
+          <span data-i18n="select_mode">选择</span>
+        </button>
+        <div class="tb-sep"></div>
+        <button class="btn primary" onclick="toast('Generating thumbnails (UE)…')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M3 17l5-4 4 3 3-2 6 5"/></svg>
+          <span data-i18n="gen_thumb">生成缩略图</span>
+        </button>
+        <button class="btn primary" onclick="exportAction()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 21h16"/></svg>
+          <span data-i18n="export">导出</span>
+        </button>
+        <button class="btn primary" onclick="toast('Import .fxpack…')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15V3M7 8l5-5 5 5"/><path d="M4 21h16"/></svg>
+          <span data-i18n="import">导入</span>
+        </button>
+        <button class="btn" onclick="toast('Health check…')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h4l2 5 4-12 2 7h6"/></svg>
+          <span data-i18n="health">体检</span>
+        </button>
+
+        <div class="spacer"></div>
+
+        <div class="filter-select">
+          <select data-i18n-title="type_filter" title="类型" onchange="applyFilters()">
+            <option value="" data-i18n="f_type">全部类型</option>
+            <option value="Niagara">Niagara</option>
+            <option value="Cascade">Cascade</option>
+            <option value="Blueprint">Blueprint</option>
+            <option value="Material">Material</option>
+          </select>
+        </div>
+        <div class="filter-select">
+          <select data-i18n-title="health_filter" title="健康" onchange="applyFilters()">
+            <option value="" data-i18n="f_health">全部状态</option>
+            <option value="ok">OK</option>
+            <option value="warn">Warning</option>
+            <option value="bad">Broken</option>
+          </select>
+        </div>
+        <div class="filter-select">
+          <select data-i18n-title="sort" title="排序" onchange="applyFilters()">
+            <option value="name" data-i18n="s_name">名称</option>
+            <option value="type" data-i18n="s_type">类型</option>
+            <option value="health" data-i18n="s_health">健康度</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="section-head">
+          <h2 id="viewTitle" data-i18n="all_fx">全部特效</h2>
+          <span class="sub" id="viewSub"></span>
+          <span class="sel-hint" id="selHint" data-i18n="sel_hint">选择模式：点击卡片批量选择</span>
+        </div>
+        <div class="grid" id="grid"></div>
+      </div>
+    </main>
+
+    <!-- INSPECTOR -->
+    <aside class="inspector" id="inspector">
+      <div class="empty" id="inspEmpty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M3 18l5-4 4 3 3-2 6 5"/></svg>
+        <div data-i18n="insp_hint">选择一个特效查看详情</div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<!-- BATCH ACTION BAR -->
+<div class="batchbar" id="batchbar">
+  <span class="bc-count" id="batchCount">0</span>
+  <span data-i18n="selected_suffix">项已选</span>
+  <div class="bc-sep"></div>
+  <button class="btn primary" onclick="exportSelected()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 21h16"/></svg>
+    <span data-i18n="batch_export">导出选中</span>
+  </button>
+  <button class="btn" onclick="clearSelection()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    <span data-i18n="clear_sel">清除选择</span>
+  </button>
+</div>
+
+<!-- LIGHTBOX -->
+<div class="lightbox" id="lightbox" onclick="if(event.target===this)closeLightbox()">
+  <div class="lb-card">
+    <button class="lb-close" onclick="closeLightbox()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+    <div class="lb-hero" id="lbHero">
+      <span class="tier-badge tier" id="lbTier"></span>
+    </div>
+    <div class="lb-title" id="lbTitle"></div>
+    <div class="lb-sub" id="lbSub"></div>
+    <div class="lb-meta">
+      <span class="type-chip" id="lbType"></span>
+      <span class="health-pill" id="lbHealth"></span>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============ sample data ============ */
+const FX = [
+  {id:1,name:"NS_Fire_Burst",type:"Niagara",cat:"Niagara",tags:["Fire","Explosion"],tier:1,health:"ok",
+   path:"/Game/FX/Combat/NS_Fire_Burst.NS_Fire_Burst",fav:true,local:true,imported:false,
+   grad:"linear-gradient(135deg,#ff6a3d,#ff2d55)",deps:["MI_Fire_Master","MT_Fire_Sprite","MESH_Sphere"],
+   note:"战斗爆发火焰，峰值帧已采集。"},
+  {id:2,name:"NS_Water_Splash",type:"Niagara",cat:"Niagara",tags:["Water"],tier:2,health:"ok",
+   path:"/Game/FX/Water/NS_Water_Splash.NS_Water_Splash",fav:false,local:true,imported:false,
+   grad:"linear-gradient(135deg,#3da5ff,#22d3ee)",deps:["MI_Water_Master","MESH_Droplet"],note:""},
+  {id:3,name:"Cascade_Smoke_Column",type:"Cascade",cat:"Cascade",tags:["Smoke"],tier:1,health:"warn",
+   path:"/Game/FX/Atmos/Cascade_Smoke_Column.Cascade_Smoke_Column",fav:false,local:true,imported:false,
+   grad:"linear-gradient(135deg,#6b7280,#9aa3b5)",deps:["MI_Smoke","T_Smoke_Noise"],note:"依赖 T_Smoke_Noise 缺失，需重映射。"},
+  {id:4,name:"NS_Magic_Rune",type:"Niagara",cat:"Niagara",tags:["Magic"],tier:3,health:"ok",
+   path:"/Game/FX/Magic/NS_Magic_Rune.NS_Magic_Rune",fav:true,local:false,imported:true,
+   grad:"linear-gradient(135deg,#a78bfa,#7c5cff)",deps:["MI_Rune_Glow","MESH_Rune"],note:"用户手动指定缩略图。"},
+  {id:5,name:"NS_Ice_Shatter",type:"Niagara",cat:"Niagara",tags:["Ice","Explosion"],tier:1,health:"ok",
+   path:"/Game/FX/Combat/NS_Ice_Shatter.NS_Ice_Shatter",fav:false,local:true,imported:false,
+   grad:"linear-gradient(135deg,#7fe3ff,#3da5ff)",deps:["MI_Ice","MESH_Shard"],note:""},
+  {id:6,name:"Cascade_Fire_Torch",type:"Cascade",cat:"Cascade",tags:["Fire"],tier:2,health:"bad",
+   path:"/Game/FX/Env/Cascade_Fire_Torch.Cascade_Fire_Torch",fav:false,local:true,imported:false,
+   grad:"linear-gradient(135deg,#ff8a3d,#ff5e3d)",deps:["MI_Fire_Master","MI_Ember"],note:"引用材质丢失，体检失败。"},
+  {id:7,name:"BP_FX_Spawner",type:"Blueprint",cat:"Blueprint",tags:["Magic"],tier:1,health:"ok",
+   path:"/Game/Blueprints/BP_FX_Spawner.BP_FX_Spawner",fav:false,local:true,imported:false,
+   grad:"linear-gradient(135deg,#37d39b,#1fa97a)",deps:["NS_Magic_Rune"],note:""},
+  {id:8,name:"M_Fire_Emissive",type:"Material",cat:"Material",tags:["Fire"],tier:1,health:"ok",
+   path:"/Game/Materials/M_Fire_Emissive.M_Fire_Emissive",fav:false,local:true,imported:false,
+   grad:"linear-gradient(135deg,#f5b14c,#ff7a3d)",deps:[],note:""},
+  {id:9,name:"NS_Explosion_Big",type:"Niagara",cat:"Niagara",tags:["Explosion","Fire"],tier:2,health:"ok",
+   path:"/Game/FX/Combat/NS_Explosion_Big.NS_Explosion_Big",fav:true,local:true,imported:false,
+   grad:"linear-gradient(135deg,#ffb03d,#ff4d4d)",deps:["MI_Fire_Master","MESH_Debris","T_Smoke_Noise"],note:""},
+  {id:10,name:"NS_Steam_Vent",type:"Niagara",cat:"Niagara",tags:["Smoke","Water"],tier:1,health:"warn",
+   path:"/Game/FX/Env/NS_Steam_Vent.NS_Steam_Vent",fav:false,local:true,imported:false,
+   grad:"linear-gradient(135deg,#aab4c5,#d6dde8)",deps:["MI_Steam"],note:"缩略图未生成，建议采集。"},
+  {id:11,name:"NS_Blood_Hit",type:"Niagara",cat:"Niagara",tags:["Magic"],tier:1,health:"ok",
+   path:"/Game/FX/Combat/NS_Blood_Hit.NS_Blood_Hit",fav:false,local:false,imported:true,
+   grad:"linear-gradient(135deg,#ff5c7a,#b3304f)",deps:["MI_Blood"],note:""},
+  {id:12,name:"Cascade_Dust_Trail",type:"Cascade",cat:"Cascade",tags:["Smoke"],tier:1,health:"ok",
+   path:"/Game/FX/Env/Cascade_Dust_Trail.Cascade_Dust_Trail",fav:false,local:true,imported:false,
+   grad:"linear-gradient(135deg,#9a8c75,#c2b49a)",deps:["MI_Dust"],note:""},
+];
+
+/* ============ i18n ============ */
+const I18N = {
+  zh:{
+    tagline:"特效库管理 · Prototype", project:"项目", search_ph:"搜索特效、标签或路径…",
+    library:"库", all_fx:"全部特效", favorites:"收藏", local_cache:"本地缓存", imported:"已导入",
+    category:"类型", niagara:"Niagara 系统", cascade:"Cascade 粒子", blueprint:"蓝图", material:"材质",
+    tags:"标签", open_proj:"打开项目", refresh:"刷新列表", gen_thumb:"生成缩略图",
+    export:"导出", import:"导入", health:"体检", type_filter:"类型", health_filter:"健康", sort:"排序",
+    f_type:"全部类型", f_health:"全部状态", s_name:"名称", s_type:"类型", s_health:"健康度",
+    insp_hint:"选择一个特效查看详情", type_label:"类型", path_label:"路径", tags_label:"标签",
+    deps_label:"依赖", health_label:"健康", note_label:"备注", set_thumb:"指定缩略图",
+    add_fav:"收藏", exp_pack:"导出 .fxpack", imp_pack:"导入 .fxpack", t1:"引擎缩略图", t2:"峰值帧", t3:"手动指定",
+    hp_ok:"正常", hp_warn:"警告", hp_bad:"损坏", found:"个结果", nores:"无匹配结果",
+    open_proj_toast:"打开项目对话框（选择 .uproject）", refresh_toast:"已从 UE 刷新资产列表",
+    thumb_toast:"正在调用 UE 生成缩略图…", export_toast:"导出 .fxpack 对话框", import_toast:"导入 .fxpack 对话框",
+    health_toast:"正在运行资产体检…", fav_add:"已加入收藏", fav_del:"已取消收藏", thumb_set:"已设置手动缩略图",
+    select_mode:"选择", sel_hint:"选择模式：点击卡片批量选择", preview:"预览",
+    batch_export:"导出选中", clear_sel:"清除选择", selected_suffix:"项已选",
+    lb_close:"关闭", lb_type:"类型", export_sel_toast:"正在导出选中的 %d 个特效…"
+  },
+  en:{
+    tagline:"FX Library Manager · Prototype", project:"Project", search_ph:"Search FX, tags or path…",
+    library:"Library", all_fx:"All FX", favorites:"Favorites", local_cache:"Local Cache", imported:"Imported",
+    category:"Type", niagara:"Niagara System", cascade:"Cascade Particle", blueprint:"Blueprint", material:"Material",
+    tags:"Tags", open_proj:"Open Project", refresh:"Refresh", gen_thumb:"Thumbnails",
+    export:"Export", import:"Import", health:"Health", type_filter:"Type", health_filter:"Health", sort:"Sort",
+    f_type:"All Types", f_health:"All Status", s_name:"Name", s_type:"Type", s_health:"Health",
+    insp_hint:"Select an FX to view details", type_label:"Type", path_label:"Path", tags_label:"Tags",
+    deps_label:"Dependencies", health_label:"Health", note_label:"Notes", set_thumb:"Set Thumbnail",
+    add_fav:"Favorite", exp_pack:"Export .fxpack", imp_pack:"Import .fxpack", t1:"Engine", t2:"Peak Frame", t3:"Manual",
+    hp_ok:"OK", hp_warn:"Warning", hp_bad:"Broken", found:" results", nores:"No matches",
+    open_proj_toast:"Open Project dialog (.uproject)", refresh_toast:"Refreshed asset list from UE",
+    thumb_toast:"Generating thumbnails via UE…", export_toast:"Export .fxpack dialog", import_toast:"Import .fxpack dialog",
+    health_toast:"Running asset health check…", fav_add:"Added to favorites", fav_del:"Removed from favorites", thumb_set:"Manual thumbnail set",
+    select_mode:"Select", sel_hint:"Select mode: click cards to batch-select", preview:"Preview",
+    batch_export:"Export Selected", clear_sel:"Clear", selected_suffix:"selected",
+    lb_close:"Close", lb_type:"Type", export_sel_toast:"Exporting %d selected FX…"
+  }
+};
+let LANG="zh";
+function setLang(l){LANG=l;document.getElementById("langZh").classList.toggle("active",l==="zh");
+  document.getElementById("langEn").classList.toggle("active",l==="en");
+  document.documentElement.lang=l==="zh"?"zh-CN":"en";
+  document.querySelectorAll("[data-i18n]").forEach(e=>{const k=e.getAttribute("data-i18n");if(I18N[l][k])e.textContent=I18N[l][k];});
+  document.querySelectorAll("[data-i18n-ph]").forEach(e=>{const k=e.getAttribute("data-i18n-ph");if(I18N[l][k])e.placeholder=I18N[l][k];});
+  document.querySelectorAll("[data-i18n-title]").forEach(e=>{const k=e.getAttribute("data-i18n-title");if(I18N[l][k])e.title=I18N[l][k];});
+  document.getElementById("viewTitle").textContent = I18N[l][currentView==="all"?"all_fx":currentView==="fav"?"favorites":currentView==="local"?"local_cache":"imported"];
+  renderCounts(); renderGrid(); renderInspector(selectedId); updateBatchBar();
+}
+
+/* ============ state ============ */
+let currentView="all";       // all | fav | local | imported
+let currentCat=null;
+let activeTags=new Set();
+let selectedId=null;
+let selectMode=false;
+let selectedSet=new Set();
+
+/* ============ glyph per type ============ */
+function glyph(type){
+  if(type==="Niagara") return `<svg class="glyph" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg>`;
+  if(type==="Cascade") return `<svg class="glyph" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6"><path d="M12 2c4 5 4 8 0 11-4-3-4-6 0-11zM12 13c4 5 4 8 0 11-4-3-4-6 0-11z"/></svg>`;
+  if(type==="Blueprint") return `<svg class="glyph" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6"><path d="M9 3h6v4H9zM9 17h6v4H9zM12 7v10"/></svg>`;
+  return `<svg class="glyph" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6"><path d="M12 3 3 8l9 5 9-5zM3 16l9 5 9-5"/></svg>`;
+}
+const TIER_LABEL={1:"t1",2:"t2",3:"t3"};
+const HEALTH_CLASS={ok:"health-ok",warn:"health-warn",bad:"health-bad"};
+const HEALTH_PILL={ok:"hp-ok",warn:"hp-warn",bad:"hp-bad"};
+
+/* ============ counts ============ */
+function renderCounts(){
+  document.getElementById("cntAll").textContent=FX.length;
+  document.getElementById("cntFav").textContent=FX.filter(f=>f.fav).length;
+  document.getElementById("cntLocal").textContent=FX.filter(f=>f.local).length;
+  document.getElementById("cntImp").textContent=FX.filter(f=>f.imported).length;
+  ["Niagara","Cascade","Blueprint","Material"].forEach(c=>{
+    document.getElementById("cnt"+c).textContent=FX.filter(f=>f.cat===c).length;
+  });
+}
+
+/* ============ filtering ============ */
+function getFiltered(){
+  const q=(document.getElementById("searchInput").value||"").toLowerCase().trim();
+  const typeSel=document.querySelector('.filter-select select[data-i18n-title="type_filter"]').value;
+  const healthSel=document.querySelector('.filter-select select[data-i18n-title="health_filter"]').value;
+  const sortSel=document.querySelector('.filter-select select[data-i18n-title="sort"]').value;
+  let list=FX.filter(f=>{
+    if(currentView==="fav"&&!f.fav)return false;
+    if(currentView==="local"&&!f.local)return false;
+    if(currentView==="imported"&&!f.imported)return false;
+    if(currentCat&&f.cat!==currentCat)return false;
+    if(typeSel&&f.type!==typeSel)return false;
+    if(healthSel&&f.health!==healthSel)return false;
+    if(activeTags.size&&![...activeTags].every(t=>f.tags.includes(t)))return false;
+    if(q&&!(f.name.toLowerCase().includes(q)||f.path.toLowerCase().includes(q)||f.tags.join(" ").toLowerCase().includes(q)))return false;
+    return true;
+  });
+  list.sort((a,b)=>{
+    if(sortSel==="name")return a.name.localeCompare(b.name);
+    if(sortSel==="type")return a.type.localeCompare(b.type);
+    if(sortSel==="health")return (a.health==="bad"?0:a.health==="warn"?1:2)-(b.health==="bad"?0:b.health==="warn"?1:2);
+    return 0;
+  });
+  return list;
+}
+
+/* ============ grid ============ */
+function renderGrid(){
+  const grid=document.getElementById("grid");
+  const list=getFiltered();
+  document.getElementById("viewSub").textContent="· "+list.length+I18N[LANG].found;
+  if(!list.length){grid.innerHTML=`<div class="empty" style="grid-column:1/-1;padding:60px"><div>${I18N[LANG].nores}</div></div>`;return;}
+  grid.innerHTML=list.map(f=>`
+    <div class="card ${selectedId===f.id?"selected":""} ${selectedSet.has(f.id)?"in-select":""}"
+         onclick="${selectMode?`toggleSelect(${f.id})`:`selectAsset(${f.id})`}">
+      <div class="thumb" style="background:${f.grad}">
+        ${glyph(f.type)}
+        <span class="tier-badge ${TIER_LABEL[f.tier]}">${I18N[LANG][TIER_LABEL[f.tier]]}</span>
+        <div class="check ${selectedSet.has(f.id)?"on":""}" onclick="event.stopPropagation();toggleSelect(${f.id})">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg>
+        </div>
+        <div class="fav-btn ${f.fav?"on":""}" onclick="event.stopPropagation();toggleFav(${f.id})">
+          <svg viewBox="0 0 24 24" fill="${f.fav?"currentColor":"none"}" stroke="currentColor" stroke-width="2"><path d="M12 17.3 6.2 21l1.5-6.5L2 9.2l6.6-.6L12 2.5l3.4 6.1 6.6.6-5.7 5.3L17.8 21z"/></svg>
+        </div>
+        <div class="hover-actions">
+          <div class="ha" onclick="event.stopPropagation();openLightbox(${f.id})">${LANG==="zh"?"预览":"Preview"}</div>
+          <div class="ha" onclick="event.stopPropagation();toast(I18N[LANG].export_toast)">${LANG==="zh"?"导出":"Export"}</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-name">${f.name}</div>
+        <div class="card-meta">
+          <span class="type-chip type-${f.cat.toLowerCase()}">${f.type}</span>
+          <span class="health-dot ${HEALTH_CLASS[f.health]}"></span>
+          <span>${f.tags[0]}</span>
+        </div>
+      </div>
+    </div>`).join("");
+}
+
+/* ============ inspector ============ */
+function selectAsset(id){selectedId=id;renderGrid();renderInspector(id);}
+function renderInspector(id){
+  const insp=document.getElementById("inspector");
+  const f=FX.find(x=>x.id===id);
+  if(!f){insp.innerHTML=`<div class="empty" id="inspEmpty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M3 18l5-4 4 3 3-2 6 5"/></svg><div>${I18N[LANG].insp_hint}</div></div>`;return;}
+  insp.innerHTML=`
+    <div class="insp-hero" style="background:${f.grad}" onclick="openLightbox(${f.id})">
+      ${glyph(f.type)}
+      <span class="tier-badge ${TIER_LABEL[f.tier]} tier">${I18N[LANG][TIER_LABEL[f.tier]]}</span>
+    </div>
+    <div class="insp-pad">
+      <div class="insp-title">${f.name}</div>
+      <div class="insp-sub">${f.path}</div>
+
+      <div class="row"><span class="k">${I18N[LANG].type_label}</span>
+        <span class="type-chip type-${f.cat.toLowerCase()}">${f.type}</span></div>
+
+      <div class="row"><span class="k">${I18N[LANG].tags_label}</span></div>
+      <div class="chips">${f.tags.map(t=>`<span class="chip">${t}</span>`).join("")}</div>
+
+      <div class="row"><span class="k">${I18N[LANG].deps_label}</span></div>
+      <div class="dep-list">${f.deps.length?f.deps.map(d=>`<div class="dep"><span class="dt"></span>${d}</div>`).join(""):`<div class="dep" style="color:var(--muted2)">—</div>`}</div>
+
+      <div class="row"><span class="k">${I18N[LANG].health_label}</span>
+        <span class="health-pill ${HEALTH_PILL[f.health]}">${I18N[LANG]["hp_"+f.health]}</span></div>
+
+      <div class="row"><span class="k">${I18N[LANG].note_label}</span></div>
+      <textarea class="notes" placeholder="…">${f.note||""}</textarea>
+
+      <div class="insp-actions">
+        <button class="btn" onclick="toggleFav(${f.id})">${f.fav?"★":"☆"} ${I18N[LANG].add_fav}</button>
+        <button class="btn" onclick="toast(I18N[LANG].thumb_set)">${I18N[LANG].set_thumb}</button>
+        <button class="btn primary full" onclick="toast(I18N[LANG].export_toast)">⤓ ${I18N[LANG].exp_pack}</button>
+        <button class="btn full" onclick="toast(I18N[LANG].import_toast)">⤒ ${I18N[LANG].imp_pack}</button>
+      </div>
+    </div>`;
+}
+
+/* ============ selection / batch ============ */
+function toggleSelectMode(){
+  selectMode=!selectMode;
+  document.body.classList.toggle("select-mode",selectMode);
+  document.getElementById("selBtn").classList.toggle("active-sel",selectMode);
+  if(!selectMode) clearSelection();
+  else renderGrid();
+}
+function toggleSelect(id){
+  if(selectedSet.has(id))selectedSet.delete(id);else selectedSet.add(id);
+  renderGrid(); updateBatchBar();
+}
+function clearSelection(){selectedSet.clear();renderGrid();updateBatchBar();}
+function updateBatchBar(){
+  const bar=document.getElementById("batchbar");
+  const n=selectedSet.size;
+  if(n>0){bar.classList.add("show");document.getElementById("batchCount").textContent=n;}
+  else bar.classList.remove("show");
+}
+function exportSelected(){
+  const n=selectedSet.size; if(!n){toast(I18N[LANG].clear_sel);return;}
+  toast(I18N[LANG].export_sel_toast.replace("%d",n));
+  clearSelection();
+}
+function exportAction(){
+  if(selectMode&&selectedSet.size){exportSelected();return;}
+  toast(I18N[LANG].export_toast);
+}
+
+/* ============ lightbox ============ */
+function openLightbox(id){
+  const f=FX.find(x=>x.id===id); if(!f)return;
+  const hero=document.getElementById("lbHero");
+  hero.style.background=f.grad;
+  hero.innerHTML=glyph(f.type)+`<span class="tier-badge tier ${TIER_LABEL[f.tier]}" id="lbTier">${I18N[LANG][TIER_LABEL[f.tier]]}</span>`;
+  document.getElementById("lbTitle").textContent=f.name;
+  document.getElementById("lbSub").textContent=f.path;
+  const tc=document.getElementById("lbType"); tc.className="type-chip type-"+f.cat.toLowerCase(); tc.textContent=f.type;
+  const hp=document.getElementById("lbHealth"); hp.className="health-pill "+HEALTH_PILL[f.health]; hp.textContent=I18N[LANG]["hp_"+f.health];
+  document.getElementById("lightbox").classList.add("show");
+}
+function closeLightbox(){document.getElementById("lightbox").classList.remove("show");}
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeLightbox();});
+
+/* ============ actions ============ */
+function toggleFav(id){const f=FX.find(x=>x.id===id);f.fav=!f.fav;renderCounts();renderGrid();renderInspector(id);
+  toast(f.fav?I18N[LANG].fav_add:I18N[LANG].fav_del);}
+function setView(v,el){currentView=v;currentCat=null;document.querySelectorAll('.nav-item[data-cat]').forEach(n=>n.classList.remove('active'));
+  document.querySelectorAll('.nav-item[data-view]').forEach(n=>n.classList.remove('active'));el.classList.add('active');
+  document.getElementById("viewTitle").textContent=I18N[LANG][v==="all"?"all_fx":v==="fav"?"favorites":v==="local"?"local_cache":"imported"];
+  renderGrid();}
+function setCat(c,el){currentCat=c;currentView="all";
+  document.querySelectorAll('.nav-item[data-view]').forEach(n=>n.classList.remove('active'));
+  document.querySelectorAll('.nav-item[data-cat]').forEach(n=>n.classList.remove('active'));el.classList.add('active');
+  document.getElementById("viewTitle").textContent=I18N[LANG][c.toLowerCase()];renderGrid();}
+function toggleTag(t){const chip=event.currentTarget; if(activeTags.has(t)){activeTags.delete(t);chip.classList.remove("on");}else{activeTags.add(t);chip.classList.add("on");}applyFilters();}
+function applyFilters(){renderGrid();}
+
+let toastTimer;
+function toast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove("show"),1800);}
+
+/* ============ init ============ */
+renderCounts();renderGrid();
+initTheme();
+
+/* ============ theme switch ============ */
+const SUN_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg>';
+const MOON_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a6.5 6.5 0 0 0 9.8 9.8z"/></svg>';
+function applyTheme(t){
+  const dark=(t==="dark");
+  document.body.classList.toggle("dark",dark);
+  document.getElementById("themeIcon").outerHTML=(dark?SUN_SVG:MOON_SVG).replace("<svg ","<svg id=\"themeIcon\" ");
+  try{localStorage.setItem("fx_theme",t);}catch(e){}
+}
+function toggleTheme(){
+  const isDark=document.body.classList.contains("dark");
+  applyTheme(isDark?"light":"dark");
+}
+function initTheme(){
+  let t="light";
+  try{t=localStorage.getItem("fx_theme")||"light";}catch(e){}
+  applyTheme(t);
+}
+</script>
+</body>
+</html>

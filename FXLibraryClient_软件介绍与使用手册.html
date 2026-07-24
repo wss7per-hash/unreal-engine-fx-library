@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FX Library · 软件介绍与使用手册</title>
+<style>
+  :root{
+    --bg:#0d1117; --bg2:#0a0e14; --panel:#161b22; --panel2:#1b222c;
+    --border:#272e38; --border2:#2f3845;
+    --text:#e6edf3; --muted:#8b949e; --muted2:#94a3b8;
+    --accent:#635bff; --accent2:#7c5cff; --accent3:#6d5df5;
+    --niagara:#635bff; --cascade:#ec4899; --unknown:#475569;
+    --ok:#1aa179; --warn:#f5a623; --bad:#e25950;
+    --radius:14px; --radius-sm:9px;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.75; font-size:15px;
+  }
+  a{color:var(--accent2); text-decoration:none;}
+  a:hover{text-decoration:underline;}
+  code,kbd{
+    font-family:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+    background:var(--panel2); border:1px solid var(--border); border-radius:6px;
+    padding:1px 6px; font-size:13px; color:#cdd6e0;
+  }
+  kbd{background:var(--accent); color:#fff; border:none; font-weight:600;}
+  /* ---------- HERO ---------- */
+  .hero{
+    background:radial-gradient(1200px 500px at 15% -10%, rgba(99,91,255,.28), transparent 60%),
+               radial-gradient(900px 500px at 95% 0%, rgba(124,92,255,.18), transparent 55%),
+               linear-gradient(180deg,#0e1320,#0a0e14);
+    border-bottom:1px solid var(--border);
+    padding:64px 32px 56px; text-align:center; position:relative; overflow:hidden;
+  }
+  .hero::before{
+    content:""; position:absolute; inset:0;
+    background-image:radial-gradient(rgba(255,255,255,.05) 1px, transparent 1px);
+    background-size:22px 22px; opacity:.5; pointer-events:none;
+  }
+  .mono{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:58px; height:58px; border-radius:16px; font-weight:800; font-size:24px; color:#fff;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));
+    box-shadow:0 8px 28px rgba(99,91,255,.45); margin-bottom:18px;
+  }
+  .hero h1{margin:6px 0 4px; font-size:38px; letter-spacing:-.5px;}
+  .hero .tag{color:var(--muted2); font-size:16px; font-weight:500;}
+  .hero .sub{margin-top:18px; display:inline-block; padding:8px 18px; border:1px solid var(--border2);
+    border-radius:999px; background:rgba(22,27,34,.6); color:#c4cdd8; font-size:13px;}
+  .wrap{max-width:1080px; margin:0 auto; padding:0 24px 90px;}
+  /* ---------- TOC ---------- */
+  nav.toc{
+    position:sticky; top:0; z-index:50; background:rgba(13,17,23,.86);
+    backdrop-filter:blur(10px); border-bottom:1px solid var(--border);
+    padding:10px 24px; display:flex; flex-wrap:wrap; gap:8px 16px; align-items:center;
+  }
+  nav.toc .brand{font-weight:700; color:var(--accent2); margin-right:8px;}
+  nav.toc a{color:var(--muted2); font-size:13.5px; padding:3px 4px;}
+  nav.toc a:hover{color:var(--text); text-decoration:none;}
+  /* ---------- sections ---------- */
+  section{margin-top:54px;}
+  h2{font-size:26px; margin:0 0 6px; padding-top:14px; letter-spacing:-.3px;
+     border-bottom:1px solid var(--border); padding-bottom:10px;}
+  h2 .num{color:var(--accent2); font-weight:800; margin-right:10px; font-size:20px;}
+  h3{font-size:18px; margin:30px 0 8px; color:#d7deea;}
+  h3 .dot{display:inline-block; width:9px; height:9px; border-radius:3px; background:var(--accent); margin-right:9px;}
+  p{color:#c8d1dc;}
+  .lead{color:var(--muted2); font-size:15.5px;}
+  ul,ol{padding-left:22px; color:#c8d1dc;}
+  li{margin:5px 0;}
+  .card{background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
+    padding:22px 24px; margin:18px 0; box-shadow:0 10px 40px rgba(0,0,0,.25);}
+  .card h4{margin:0 0 8px; font-size:15px; color:var(--text); font-weight:700;}
+  /* ---------- grid ---------- */
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:14px;}
+  @media(max-width:820px){.grid2,.grid3{grid-template-columns:1fr;}}
+  .feat{background:var(--panel); border:1px solid var(--border); border-radius:var(--radius-sm);
+    padding:16px 18px;}
+  .feat .ico{font-size:20px;}
+  .feat h4{margin:8px 0 4px; font-size:15px;}
+  .feat p{margin:0; font-size:13.5px; color:var(--muted2);}
+  /* ---------- table ---------- */
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th,td{border:1px solid var(--border); padding:10px 12px; text-align:left; vertical-align:top;}
+  th{background:var(--panel2); color:#d7deea; font-weight:700;}
+  td code{white-space:nowrap;}
+  tr:nth-child(even) td{background:rgba(255,255,255,.015);}
+  /* ---------- callout ---------- */
+  .callout{border-left:3px solid var(--accent); background:linear-gradient(90deg,rgba(99,91,255,.10),transparent);
+    padding:12px 16px; border-radius:0 10px 10px 0; margin:16px 0; color:#d3dae6;}
+  .callout.warn{border-color:var(--warn); background:linear-gradient(90deg,rgba(245,166,35,.10),transparent);}
+  .callout.danger{border-color:var(--bad); background:linear-gradient(90deg,rgba(226,89,80,.12),transparent);}
+  .callout b{color:var(--text);}
+  /* ---------- steps ---------- */
+  .steps{counter-reset:st; list-style:none; padding-left:0; margin:14px 0;}
+  .steps li{position:relative; padding:8px 0 8px 46px; border:none;}
+  .steps li::before{counter-increment:st; content:counter(st); position:absolute; left:0; top:8px;
+    width:30px; height:30px; border-radius:50%; background:var(--panel2); border:1px solid var(--border2);
+    color:var(--accent2); font-weight:700; display:flex; align-items:center; justify-content:center; font-size:14px;}
+  /* ---------- svg container ---------- */
+  .fig{background:linear-gradient(180deg,#10151d,#0c1118); border:1px solid var(--border);
+    border-radius:var(--radius); padding:18px; margin:18px 0; overflow-x:auto;}
+  .fig svg{max-width:100%; height:auto; display:block; margin:0 auto;}
+  .fig .cap{text-align:center; color:var(--muted2); font-size:13px; margin-top:10px;}
+  /* ---------- chip ---------- */
+  .chip{display:inline-block; padding:2px 10px; border-radius:999px; font-size:12px; font-weight:700;
+    border:1px solid var(--border2);}
+  .chip.nia{background:rgba(99,91,255,.16); color:#a9a1ff; border-color:rgba(99,91,255,.4);}
+  .chip.cas{background:rgba(236,72,153,.16); color:#f7a8d4; border-color:rgba(236,72,153,.4);}
+  .chip.bp{background:rgba(34,211,238,.14); color:#7fe3f0; border-color:rgba(34,211,238,.4);}
+  .pill{display:inline-block; padding:3px 11px; border-radius:999px; font-size:12.5px; font-weight:600;
+    background:var(--panel2); border:1px solid var(--border2); color:#cdd6e0;}
+  footer{text-align:center; color:var(--muted2); font-size:13px; padding:40px 0 10px; border-top:1px solid var(--border); margin-top:60px;}
+  .tocbtn{position:fixed; right:20px; bottom:20px; z-index:60; background:var(--accent); color:#fff; border:none;
+    border-radius:12px; padding:11px 16px; font-weight:700; cursor:pointer; box-shadow:0 8px 24px rgba(99,91,255,.4);}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="mono">FX</div>
+  <h1>FX Library</h1>
+  <div class="tag">Niagara / Cascade 粒子特效库 · 独立桌面客户端</div>
+  <div class="sub">像管理图片一样管理 UE5 粒子特效：能看、能搜、能收藏、能一键跨项目搬运，且离线可用</div>
+</div>
+
+<nav class="toc">
+  <span class="brand">📚 目录</span>
+  <a href="#c1">1 · 软件介绍</a>
+  <a href="#c2">2 · 安装与配置</a>
+  <a href="#c3">3 · 主界面导览</a>
+  <a href="#c4">4 · 核心功能</a>
+  <a href="#c5">5 · .fxpack 格式</a>
+  <a href="#c6">6 · 快捷键</a>
+  <a href="#c7">7 · 常见问题</a>
+  <a href="#c8">8 · 技术规格</a>
+</nav>
+
+<div class="wrap">
+
+<!-- ============ 1. 软件介绍 ============ -->
+<section id="c1">
+  <h2><span class="num">1</span>软件介绍</h2>
+  <p class="lead"><b>FX Library</b> 是一个独立的桌面客户端（Python + PySide6 / Qt），用于集中管理 Unreal Engine 5 中的 <b>Niagara 系统</b>与 <b>Cascade 粒子系统</b>。它把散布在多个项目的特效资产统一编目、生成缩略图、打标签、收藏，并支持以自包含的 <code>.fxpack</code> 包在任意项目间一键搬运——且<b>默认完全不依赖 UE 编辑器即可工作</b>。</p>
+
+  <div class="grid3">
+    <div class="feat"><div class="ico">🗂️</div><h4>统一资产库</h4><p>扫描本地任意目录中的 <code>.uasset</code>，用纯 Python 字节识别 Niagara / Cascade，自动编入本地 SQLite 索引。</p></div>
+    <div class="feat"><div class="ico">🖼️</div><h4>离线缩略图</h4><p>直接从 <code>.uasset</code> 内嵌数据读取引擎缩略图（无需启动 UE），没有时生成风格化占位图。</p></div>
+    <div class="feat"><div class="ico">📦</div><h4>自包含迁移</h4><p>导出 <code>.fxpack</code>（标准 .uasset + 依赖 + 清单 + 缩略图），导入零配置、不变粉。</p></div>
+    <div class="feat"><div class="ico">🔖</div><h4>标签·收藏·评分</h4><p>为每个特效添加标签、收藏星标、五星评分与备注，右侧 Inspector 一目了然。</p></div>
+    <div class="feat"><div class="ico">🔎</div><h4>极速检索</h4><p>顶部搜索框按名称 / 标签 / 路径实时过滤，下拉筛选按类型、来源、排序组合。</p></div>
+    <div class="feat"><div class="ico">🩺</div><h4>资产体检</h4><p>一键扫描库内资产的源文件缺失与重名问题，给出可点击的报告。</p></div>
+  </div>
+
+  <h3><span class="dot"></span>它解决了什么痛点</h3>
+  <table>
+    <tr><th>UE5 原生现状痛点</th><th>FX Library 的解法</th></tr>
+    <tr><td>没有好用的「特效资产库」，只能在 Content Browser 里硬翻文件夹</td><td>统一元数据 + 标签 + 缩略图 + 全文检索，Everything 式浏览</td></tr>
+    <tr><td>把特效从 A 项目搬到 B 项目要手动 Migrate，常丢材质/曲线/贴图，打开变粉</td><td>递归提取全部依赖，导出为自包含 <code>.fxpack</code>，导入零配置</td></tr>
+    <tr><td>粒子预览只能进引擎看，库外面完全盲选</td><td>离线读取静态缩略图并缓存，库外也能浏览</td></tr>
+    <tr><td>同一个爆炸特效被复制 20 份、版本各异</td><td>统一库 + 收藏 + 评分 + 复用统计</td></tr>
+  </table>
+
+  <h3><span class="dot"></span>整体架构</h3>
+  <p>FX Library 采用<b>「纯客户端 + 可选 UE 无头桥」</b>架构。日常使用（编目、缩略图、标签、检索、导出/导入 <code>.fxpack</code>）全部纯 Python 完成，<b>不需要安装或运行 UE</b>。只有在你想用 UE 渲染「真实播放帧缩略图」时才需要配置 <code>UnrealEditor.exe</code>。</p>
+
+  <div class="fig">
+    <svg viewBox="0 0 920 380" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif">
+      <defs>
+        <linearGradient id="gClient" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#1b2230"/><stop offset="1" stop-color="#141a24"/>
+        </linearGradient>
+        <linearGradient id="gUe" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#3a1d40"/><stop offset="1" stop-color="#2a1530"/>
+        </linearGradient>
+        <marker id="arr" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+          <path d="M0,0 L9,4.5 L0,9 Z" fill="#6d5df5"/>
+        </marker>
+      </defs>
+
+      <!-- client box -->
+      <rect x="20" y="30" width="540" height="320" rx="16" fill="url(#gClient)" stroke="#2f3845"/>
+      <text x="40" y="62" fill="#e6edf3" font-size="16" font-weight="800">FX Library 客户端</text>
+      <text x="40" y="82" fill="#8b949e" font-size="12">Python 3 + PySide6 (Qt) · 独立桌面程序</text>
+
+      <!-- three columns -->
+      <rect x="40" y="100" width="150" height="150" rx="10" fill="#161b22" stroke="#272e38"/>
+      <text x="115" y="124" fill="#a9a1ff" font-size="12.5" font-weight="700" text-anchor="middle">界面 / 浏览</text>
+      <text x="115" y="148" fill="#8b949e" font-size="10.5" text-anchor="middle">图标 / 列表 /</text>
+      <text x="115" y="163" fill="#8b949e" font-size="10.5" text-anchor="middle">详细信息视图</text>
+      <text x="115" y="182" fill="#8b949e" font-size="10.5" text-anchor="middle">搜索 / 筛选 /</text>
+      <text x="115" y="197" fill="#8b949e" font-size="10.5" text-anchor="middle">收藏 / 标签 / 评分</text>
+      <text x="115" y="216" fill="#8b949e" font-size="10.5" text-anchor="middle">Inspector 详情</text>
+
+      <rect x="205" y="100" width="150" height="150" rx="10" fill="#161b22" stroke="#272e38"/>
+      <text x="280" y="124" fill="#7c5cff" font-size="12.5" font-weight="700" text-anchor="middle">本地索引</text>
+      <text x="280" y="148" fill="#8b949e" font-size="10.5" text-anchor="middle">SQLite 数据库</text>
+      <text x="280" y="163" fill="#8b949e" font-size="10.5" text-anchor="middle">+ thumbs/ 缩略图</text>
+      <text x="280" y="178" fill="#8b949e" font-size="10.5" text-anchor="middle">+ files/ 复制存档</text>
+      <text x="280" y="197" fill="#8b949e" font-size="10.5" text-anchor="middle">~/.fxlibrary/</text>
+
+      <rect x="370" y="100" width="170" height="150" rx="10" fill="#161b22" stroke="#272e38"/>
+      <text x="455" y="124" fill="#cdd6e0" font-size="12.5" font-weight="700" text-anchor="middle">纯 Python 引擎</text>
+      <text x="455" y="148" fill="#8b949e" font-size="10.5" text-anchor="middle">扫描 .uasset 字节</text>
+      <text x="455" y="163" fill="#8b949e" font-size="10.5" text-anchor="middle">识别 Niagara/Cascade</text>
+      <text x="455" y="178" fill="#8b949e" font-size="10.5" text-anchor="middle">读取内嵌缩略图</text>
+      <text x="455" y="197" fill="#8b949e" font-size="10.5" text-anchor="middle">生成占位图 / .fxpack</text>
+
+      <rect x="40" y="270" width="500" height="46" rx="10" fill="#1b2230" stroke="#2f3845"/>
+      <text x="290" y="298" fill="#8b949e" font-size="11.5" text-anchor="middle">✅ 以上全部 <tspan fill="#1aa179" font-weight="700">无需 UE 编辑器</tspan> 即可运行</text>
+
+      <!-- ue bridge box -->
+      <rect x="600" y="30" width="300" height="320" rx="16" fill="url(#gUe)" stroke="#5a2f66"/>
+      <text x="620" y="62" fill="#f7a8d4" font-size="15" font-weight="800">可选 · UE 无头桥</text>
+      <text x="620" y="82" fill="#b78bc0" font-size="11.5">仅在「真实渲染缩略图」时使用</text>
+
+      <rect x="620" y="100" width="260" height="80" rx="10" fill="#2a1530" stroke="#5a2f66"/>
+      <text x="750" y="128" fill="#f7a8d4" font-size="12" font-weight="700" text-anchor="middle">UnrealEditor.exe</text>
+      <text x="750" y="148" fill="#b78bc0" font-size="10.5" text-anchor="middle">-ExecutePythonScript</text>
+      <text x="750" y="163" fill="#b78bc0" font-size="10.5" text-anchor="middle">-unattended -RenderOffScreen</text>
+
+      <rect x="620" y="200" width="260" height="60" rx="10" fill="#2a1530" stroke="#5a2f66"/>
+      <text x="750" y="226" fill="#e6edf3" font-size="11" text-anchor="middle">渲染「真实播放帧」缩略图</text>
+      <text x="750" y="244" fill="#b78bc0" font-size="10" text-anchor="middle">(需本机已装 UE 5.x)</text>
+
+      <rect x="620" y="276" width="260" height="40" rx="10" fill="#1b2230" stroke="#2f3845"/>
+      <text x="750" y="301" fill="#8b949e" font-size="10.5" text-anchor="middle">读 .uasset 作为唯一真相源</text>
+
+      <!-- arrow -->
+      <line x1="560" y1="190" x2="598" y2="190" stroke="#6d5df5" stroke-width="2" marker-end="url(#arr)"/>
+      <text x="579" y="182" fill="#6d5df5" font-size="10" text-anchor="middle" transform="rotate(-90 579 182)">可选增强</text>
+    </svg>
+    <div class="cap">图 1-1 · 纯客户端架构；UE 无头桥仅为「真实渲染缩略图」的可选增强，日常使用不依赖它</div>
+  </div>
+</section>
+
+<!-- ============ 2. 安装与配置 ============ -->
+<section id="c2">
+  <h2><span class="num">2</span>安装与配置</h2>
+  <p class="lead">FX Library 以独立可执行程序（<code>.exe</code>）形式分发，无需安装、解压即用。</p>
+
+  <h3><span class="dot"></span>系统要求</h3>
+  <table>
+    <tr><th>项目</th><th>要求</th></tr>
+    <tr><td>操作系统</td><td>Windows 10 / 11（64 位）</td></tr>
+    <tr><td>运行时</td><td>程序自带 Python 运行环境，<b>无需</b>单独安装 Python</td></tr>
+    <tr><td>UE 编辑器</td><td><b>可选</b>。仅在需要「真实渲染缩略图」时，本机需装有 UE 5.x 并配置 <code>UnrealEditor.exe</code> 路径</td></tr>
+    <tr><td>磁盘</td><td>程序约 3 MB；缩略图缓存与复制存档随库规模增长（位于 <code>~/.fxlibrary/</code>）</td></tr>
+  </table>
+
+  <h3><span class="dot"></span>首次启动与设置</h3>
+  <ol class="steps">
+    <li>双击 <code>FXLibraryClient.exe</code> 启动程序，进入默认暗色主题主界面。</li>
+    <li>点击右上角 <b>⚙ 设置</b> 按钮，打开设置对话框。</li>
+    <li><b>语言</b>：可选「中文 / English / 跟随系统」。当前界面语言即时生效。</li>
+    <li><b>主题</b>：当前版本聚焦暗色主题（Stripe 柔光风格），提供最舒适的浏览体验。</li>
+    <li><b>仅导入 FX 特效</b>：勾选后扫描会自动跳过非 Niagara/Cascade 的 <code>.uasset</code>（如纯蓝图、材质、网格），保持库内只存单特效。</li>
+    <li><b>添加文件夹时不再询问导入方式</b>：勾选后，每次添加文件夹直接使用已保存的导入模式，省去弹窗。</li>
+    <li><b>Unreal Editor 路径</b>：点击「浏览」选择本机的 <code>UnrealEditor.exe</code>（如 <code>C:/UE_5.4/Engine/Binaries/Win64/UnrealEditor.exe</code>）。<b>留空也能用</b>——只是无法渲染真实播放帧缩略图。</li>
+    <li>点击「确定」保存配置。配置写入 <code>%USERPROFILE%/.fxlibrary/config.json</code>。</li>
+  </ol>
+
+  <div class="fig">
+    <svg viewBox="0 0 560 320" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif">
+      <rect x="20" y="20" width="520" height="280" rx="14" fill="#161b22" stroke="#2f3845"/>
+      <text x="40" y="52" fill="#e6edf3" font-size="15" font-weight="800">⚙ 设置</text>
+      <line x1="40" y1="64" x2="520" y2="64" stroke="#272e38"/>
+
+      <text x="40" y="92" fill="#8b949e" font-size="11.5">仅导入 FX 特效</text>
+      <rect x="360" y="78" width="180" height="24" rx="6" fill="#0d1117" stroke="#272e38"/>
+      <rect x="510" y="80" width="26" height="20" rx="10" fill="#1aa179"/><circle cx="522" cy="90" r="7" fill="#fff"/>
+
+      <text x="40" y="132" fill="#8b949e" font-size="11.5">添加文件夹时不再询问</text>
+      <rect x="360" y="118" width="180" height="24" rx="6" fill="#0d1117" stroke="#272e38"/>
+      <rect x="510" y="120" width="26" height="20" rx="10" fill="#1aa179"/><circle cx="522" cy="130" r="7" fill="#fff"/>
+
+      <text x="40" y="172" fill="#8b949e" font-size="11.5">主题</text>
+      <rect x="360" y="158" width="180" height="26" rx="6" fill="#0d1117" stroke="#272e38"/>
+      <text x="372" y="176" fill="#cdd6e0" font-size="11">暗色 ▾</text>
+
+      <text x="40" y="212" fill="#8b949e" font-size="11.5">语言</text>
+      <rect x="360" y="198" width="180" height="26" rx="6" fill="#0d1117" stroke="#272e38"/>
+      <text x="372" y="216" fill="#cdd6e0" font-size="11">中文 ▾</text>
+
+      <text x="40" y="252" fill="#8b949e" font-size="11.5">Unreal Editor 路径</text>
+      <rect x="360" y="238" width="140" height="26" rx="6" fill="#0d1117" stroke="#272e38"/>
+      <text x="372" y="256" fill="#6d5df5" font-size="10.5">浏览…</text>
+
+      <rect x="400" y="282" width="60" height="22" rx="6" fill="#635bff"/><text x="430" y="297" fill="#fff" font-size="11" text-anchor="middle">确定</text>
+    </svg>
+    <div class="cap">图 2-1 · 设置对话框（示意）</div>
+  </div>
+
+  <h3><span class="dot"></span>两种导入模式</h3>
+  <p>添加文件夹扫描时，程序会询问以何种方式纳入资产（可在设置中关闭此询问，直接使用上次选择）：</p>
+  <table>
+    <tr><th>模式</th><th>行为</th><th>适用场景</th></tr>
+    <tr><td><span class="chip nia">引用 Reference</span></td><td>保留 <code>.uasset</code> 在原位置，库只记录路径与缩略图索引。<b>不复制文件</b>。</td><td>特效仍在原项目内、只想编目浏览（默认推荐）</td></tr>
+    <tr><td><span class="chip cas">复制 Copy</span></td><td>把 <code>.uasset</code> 复制进库的 <code>files/</code> 目录，成为库自己的副本。</td><td>想把特效收拢进统一库、脱离原项目独立管理</td></tr>
+  </table>
+  <div class="callout warn"><b>数据安全提示：</b>「引用」模式下，删除/永久删除操作<b>只影响库索引，绝不触碰你的原始文件</b>；「复制」模式下永久删除也只清理库内副本（<code>files/</code> 与 <code>thumbs/</code>），并设有路径安全围栏，绝不会删到库目录之外。</div>
+</section>
+
+<!-- ============ 3. 主界面导览 ============ -->
+<section id="c3">
+  <h2><span class="num">3</span>主界面导览</h2>
+  <p class="lead">主界面采用经典三栏布局：左侧导航、中间内容、右侧详情，顶部全局搜索，底部活动日志。</p>
+
+  <div class="fig">
+    <svg viewBox="0 0 980 560" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif">
+      <!-- outer window -->
+      <rect x="10" y="10" width="960" height="540" rx="16" fill="#0d1117" stroke="#2f3845"/>
+
+      <!-- header -->
+      <rect x="10" y="10" width="960" height="54" rx="16" fill="#161b22"/>
+      <rect x="10" y="44" width="960" height="20" fill="#161b22"/>
+      <rect x="26" y="24" width="32" height="32" rx="9" fill="#635bff"/><text x="42" y="46" fill="#fff" font-size="14" font-weight="800" text-anchor="middle">FX</text>
+      <text x="70" y="38" fill="#e6edf3" font-size="14" font-weight="800">FX Library</text>
+      <text x="70" y="52" fill="#8b949e" font-size="10.5">特效库管理</text>
+      <rect x="300" y="20" width="420" height="34" rx="9" fill="#0d1117" stroke="#272e38"/>
+      <text x="316" y="42" fill="#8b949e" font-size="11">搜索特效、标签或路径…</text>
+      <rect x="800" y="20" width="46" height="34" rx="9" fill="#1b2230" stroke="#272e38"/><text x="823" y="42" fill="#cdd6e0" font-size="12" text-anchor="middle">中</text>
+      <rect x="856" y="20" width="34" height="34" rx="9" fill="#1b2230" stroke="#272e38"/><text x="873" y="42" fill="#cdd6e0" font-size="15" text-anchor="middle">⚙</text>
+
+      <!-- sidebar -->
+      <rect x="10" y="64" width="240" height="466" fill="#10151d" stroke="#272e38"/>
+      <rect x="22" y="78" width="216" height="30" rx="9" fill="#1b2230" stroke="#2f3845"/><text x="120" y="98" fill="#e6edf3" font-size="12.5" font-weight="700" text-anchor="middle">📁 我的库</text>
+      <rect x="22" y="118" width="216" height="78" rx="10" fill="url(#gClient)" stroke="#2f3845"/>
+      <text x="38" y="150" fill="#a9a1ff" font-size="22" font-weight="800">128</text>
+      <text x="38" y="172" fill="#8b949e" font-size="10.5">个资产 · ★ 12 · 未分类 8</text>
+      <text x="180" y="150" fill="#635bff" font-size="18" font-weight="800">FX</text>
+
+      <text x="30" y="222" fill="#8b949e" font-size="11">快速筛选</text>
+      <rect x="22" y="232" width="216" height="26" rx="7" fill="#161b22" stroke="#272e38"/><text x="34" y="249" fill="#cdd6e0" font-size="11">◇ 未分类</text>
+      <rect x="22" y="262" width="216" height="26" rx="7" fill="#161b22" stroke="#272e38"/><text x="34" y="279" fill="#cdd6e0" font-size="11"># 未标签</text>
+      <rect x="22" y="308" width="216" height="26" rx="7" fill="#161b22" stroke="#272e38"/><text x="34" y="325" fill="#cdd6e0" font-size="11">🖼 有缩略图</text>
+      <rect x="22" y="338" width="216" height="26" rx="7" fill="#161b22" stroke="#272e38"/><text x="34" y="355" fill="#cdd6e0" font-size="11">🚫 无缩略图</text>
+      <text x="30" y="392" fill="#8b949e" font-size="11">收藏</text>
+      <rect x="22" y="402" width="216" height="26" rx="7" fill="#161b22" stroke="#272e38"/><text x="34" y="419" fill="#cdd6e0" font-size="11">★ 收藏</text>
+      <text x="30" y="456" fill="#8b949e" font-size="11">文件夹  ＋</text>
+      <rect x="22" y="466" width="216" height="24" rx="7" fill="#161b22" stroke="#272e38"/><text x="34" y="482" fill="#cdd6e0" font-size="11">📂 火焰特效</text>
+      <line x1="22" y1="500" x2="238" y2="500" stroke="#272e38"/>
+      <rect x="22" y="508" width="216" height="26" rx="7" fill="#161b22" stroke="#272e38"/><text x="34" y="525" fill="#cdd6e0" font-size="11">🗑 回收站</text>
+
+      <!-- main area -->
+      <rect x="250" y="64" width="700" height="466" fill="#0d1117"/>
+      <!-- toolbar -->
+      <rect x="250" y="64" width="700" height="76" fill="#161b22"/>
+      <rect x="264" y="76" width="120" height="32" rx="9" fill="#635bff"/><text x="324" y="96" fill="#fff" font-size="11.5" font-weight="700" text-anchor="middle">＋ 扫描目录</text>
+      <rect x="392" y="76" width="120" height="32" rx="9" fill="#1b2230" stroke="#2f3845"/><text x="452" y="96" fill="#cdd6e0" font-size="11.5" text-anchor="middle">🖼 读取缩略图</text>
+      <rect x="520" y="76" width="120" height="32" rx="9" fill="#1b2230" stroke="#2f3845"/><text x="580" y="96" fill="#cdd6e0" font-size="11.5" text-anchor="middle">📦 导出.fxpack</text>
+      <rect x="648" y="76" width="96" height="32" rx="9" fill="#1b2230" stroke="#2f3845"/><text x="696" y="96" fill="#cdd6e0" font-size="11.5" text-anchor="middle">🩺 体检</text>
+      <rect x="264" y="116" width="76" height="26" rx="7" fill="#0d1117" stroke="#272e38"/><text x="302" y="133" fill="#cdd6e0" font-size="10.5" text-anchor="middle">全部类型 ▾</text>
+      <rect x="348" y="116" width="100" height="26" rx="7" fill="#0d1117" stroke="#272e38"/><text x="398" y="133" fill="#cdd6e0" font-size="10.5" text-anchor="middle">全部来源 ▾</text>
+      <rect x="456" y="116" width="92" height="26" rx="7" fill="#0d1117" stroke="#272e38"/><text x="502" y="133" fill="#cdd6e0" font-size="10.5" text-anchor="middle">名称 ▾</text>
+      <rect x="556" y="116" width="92" height="26" rx="7" fill="#0d1117" stroke="#272e38"/><text x="602" y="133" fill="#cdd6e0" font-size="10.5" text-anchor="middle">图标 ▾</text>
+
+      <!-- content cards -->
+      <text x="264" y="166" fill="#e6edf3" font-size="14" font-weight="800">全部特效</text>
+      <text x="358" y="166" fill="#8b949e" font-size="11">128 项</text>
+      <g>
+        <!-- card 1 -->
+        <rect x="264" y="180" width="150" height="154" rx="12" fill="#161b22" stroke="#2f3845"/>
+        <rect x="276" y="192" width="126" height="100" rx="8" fill="#635bff" opacity=".25"/>
+        <text x="339" y="248" fill="#a9a1ff" font-size="34" font-weight="800" text-anchor="middle">N</text>
+        <text x="276" y="308" fill="#cdd6e0" font-size="11">NS_Fire</text>
+        <text x="276" y="324" fill="#8b949e" font-size="9.5">Niagara · 12 KB</text>
+        <!-- card 2 -->
+        <rect x="430" y="180" width="150" height="154" rx="12" fill="#161b22" stroke="#2f3845"/>
+        <rect x="442" y="192" width="126" height="100" rx="8" fill="#ec4899" opacity=".22"/>
+        <text x="505" y="248" fill="#f7a8d4" font-size="34" font-weight="800" text-anchor="middle">C</text>
+        <text x="442" y="308" fill="#cdd6e0" font-size="11">PS_Explosion</text>
+        <text x="442" y="324" fill="#8b949e" font-size="9.5">Cascade · 8 KB</text>
+        <!-- card 3 -->
+        <rect x="596" y="180" width="150" height="154" rx="12" fill="#161b22" stroke="#2f3845"/>
+        <rect x="608" y="192" width="126" height="100" rx="8" fill="#635bff" opacity=".25"/>
+        <text x="671" y="248" fill="#a9a1ff" font-size="34" font-weight="800" text-anchor="middle">N</text>
+        <text x="608" y="308" fill="#cdd6e0" font-size="11">NS_Spark</text>
+        <text x="608" y="324" fill="#8b949e" font-size="9.5">Niagara · 15 KB</text>
+        <!-- card 4 -->
+        <rect x="762" y="180" width="150" height="154" rx="12" fill="#161b22" stroke="#2f3845"/>
+        <rect x="774" y="192" width="126" height="100" rx="8" fill="#ec4899" opacity=".22"/>
+        <text x="837" y="248" fill="#f7a8d4" font-size="34" font-weight="800" text-anchor="middle">C</text>
+        <text x="774" y="308" fill="#cdd6e0" font-size="11">PS_Smoke</text>
+        <text x="774" y="324" fill="#8b949e" font-size="9.5">Cascade · 10 KB</text>
+      </g>
+
+      <!-- inspector -->
+      <rect x="958" y="64" width="12" height="466" fill="#10151d" stroke="#272e38"/>
+      <rect x="958" y="64" width="0" height="0" fill="none"/>
+      <text x="966" y="92" fill="#8b949e" font-size="10" transform="rotate(90 966 92)">Inspector</text>
+
+      <!-- batch bar -->
+      <rect x="560" y="500" width="320" height="40" rx="11" fill="#1b2230" stroke="#2f3845"/>
+      <text x="574" y="525" fill="#e6edf3" font-size="11" font-weight="700">3 <tspan fill="#8b949e" font-weight="400">项已选</tspan></text>
+      <rect x="690" y="508" width="80" height="26" rx="7" fill="#635bff"/><text x="730" y="525" fill="#fff" font-size="10.5" text-anchor="middle">导出选中</text>
+      <rect x="778" y="508" width="34" height="26" rx="7" fill="#3a1d22" stroke="#5a2f33"/><text x="795" y="525" fill="#f7a8d4" font-size="10.5" text-anchor="middle">🗑</text>
+
+      <!-- labels -->
+      <text x="120" y="586" fill="#6d5df5" font-size="10.5" text-anchor="middle">① 侧边栏导航</text>
+      <text x="600" y="586" fill="#6d5df5" font-size="10.5" text-anchor="middle">② 工具栏 + 内容区</text>
+      <text x="964" y="586" fill="#6d5df5" font-size="10.5" text-anchor="middle">③ 详情面板</text>
+    </svg>
+    <div class="cap">图 3-1 · 主界面三栏布局示意（暗色主题）</div>
+  </div>
+
+  <div class="grid3">
+    <div class="card"><h4>① 顶部 Header</h4><p>左侧 FX 品牌标识，中间全局搜索框（按名称 / 标签 / 路径实时过滤），右侧「中 / EN」语言切换与「⚙ 设置」按钮。</p></div>
+    <div class="card"><h4>② 左侧 Sidebar</h4><p>「我的库」入口 + 资产统计 hero 卡；快速筛选（未分类 / 未标签 / 有·无缩略图 / 收藏）；自定义虚拟文件夹；底部回收站。</p></div>
+    <div class="card"><h4>③ 中间主区</h4><p>双行工具栏（扫描 / 读取缩略图 / 导出 / 体检 / 全选反选 + 类型·来源·排序·视图·大小筛选）；下方图标 / 列表 / 详细信息三种内容视图。</p></div>
+    <div class="card"><h4>④ 右侧 Inspector</h4><p>选中资产后展示大图、名称、路径、类型徽章、健康状态、标签、五星评分、备注，以及打开位置 / 复制路径 / 收藏 / 指定缩略图 / 复制·导出·导入 等操作。</p></div>
+    <div class="card"><h4>⑤ 底部活动日志</h4><p>通过工具栏终端图标切换显示，记录扫描、导出、导入、缩略图读取等操作的进度与结果；UE 桥日志也在此呈现。</p></div>
+    <div class="card"><h4>⑥ 浮动批量条</h4><p>选中一个或多个资产时出现，淡入展示，提供「导出选中 / 移到回收站 / 恢复 / 永久删除 / 清空回收站 / 清除」。</p></div>
+  </div>
+</section>
+
+<!-- ============ 4. 核心功能 ============ -->
+<section id="c4">
+  <h2><span class="num">4</span>核心功能详解</h2>
+
+  <h3><span class="dot"></span>4.1 扫描目录，建立资产库</h3>
+  <p>点击工具栏 <b>＋ 扫描目录</b>，选择一个包含 <code>.uasset</code> 的文件夹（通常是某个 UE 项目的 <code>Content/</code> 目录，或任意磁盘目录）。扫描过程完全在后台线程进行，不会卡住界面。</p>
+  <div class="fig">
+    <svg viewBox="0 0 880 180" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif">
+      <defs><marker id="a2" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="#6d5df5"/></marker></defs>
+      <rect x="10" y="60" width="150" height="60" rx="10" fill="#161b22" stroke="#2f3845"/>
+      <text x="85" y="86" fill="#e6edf3" font-size="12" font-weight="700" text-anchor="middle">选择文件夹</text>
+      <text x="85" y="104" fill="#8b949e" font-size="10" text-anchor="middle">递归遍历 .uasset</text>
+      <line x1="160" y1="90" x2="208" y2="90" stroke="#6d5df5" stroke-width="2" marker-end="url(#a2)"/>
+
+      <rect x="210" y="60" width="170" height="60" rx="10" fill="#161b22" stroke="#2f3845"/>
+      <text x="295" y="86" fill="#e6edf3" font-size="12" font-weight="700" text-anchor="middle">字节识别类型</text>
+      <text x="295" y="104" fill="#8b949e" font-size="10" text-anchor="middle">Niagara / Cascade / BP</text>
+      <line x1="380" y1="90" x2="428" y2="90" stroke="#6d5df5" stroke-width="2" marker-end="url(#a2)"/>
+
+      <rect x="430" y="60" width="180" height="60" rx="10" fill="#161b22" stroke="#2f3845"/>
+      <text x="520" y="86" fill="#e6edf3" font-size="12" font-weight="700" text-anchor="middle">读取 / 生成缩略图</text>
+      <text x="520" y="104" fill="#8b949e" font-size="10" text-anchor="middle">内嵌图 或 占位图</text>
+      <line x1="610" y1="90" x2="658" y2="90" stroke="#6d5df5" stroke-width="2" marker-end="url(#a2)"/>
+
+      <rect x="660" y="60" width="210" height="60" rx="10" fill="#1b2230" stroke="#2f3845"/>
+      <text x="765" y="86" fill="#a9a1ff" font-size="12" font-weight="700" text-anchor="middle">写入本地索引</text>
+      <text x="765" y="104" fill="#8b949e" font-size="10" text-anchor="middle">SQLite + thumbs/</text>
+    </svg>
+    <div class="cap">图 4-1 · 扫描数据流</div>
+  </div>
+  <ul>
+    <li><b>纯 Python 类型识别</b>：通过扫描 <code>.uasset</code> 包名表字节，判断是 Niagara 系统（<code>NiagaraSystem</code>）、Cascade 粒子（<code>ParticleSystem</code>）还是未知类型；若文件是<b>内嵌了特效的蓝图</b>，会标记为 <span class="chip bp">BP</span> 徽章并正常收录，不会漏掉。</li>
+    <li><b>缩略图</b>：优先读取资产内嵌的引擎缩略图；读不到则生成风格化占位图（见 4.2）。</li>
+    <li><b>引用 vs 复制</b>：按设置中的导入模式决定是只记录路径，还是把文件复制进库的 <code>files/</code>。</li>
+    <li><b>拖拽导入</b>：可直接把文件夹或 <code>.uasset</code> 文件拖入主窗口，自动开始扫描导入。</li>
+  </ul>
+
+  <h3><span class="dot"></span>4.2 缩略图：三档策略</h3>
+  <p>FX Library 让每个特效都有「一张图」可看，按来源分为三档（Tier）：</p>
+  <table>
+    <tr><th>Tier</th><th>来源</th><th>是否需要 UE</th><th>说明</th></tr>
+    <tr><td><span class="pill">Tier 1 · 引擎</span></td><td>读取 <code>.uasset</code> 内嵌缩略图</td><td>❌ 不需要</td><td>纯 Python 解析包内缩略图数据，离线即用，是默认与最常用的一档。</td></tr>
+    <tr><td><span class="pill">Tier 3 · 手动</span></td><td>用户指定图片</td><td>❌ 不需要</td><td>在 Inspector 点「指定缩略图」，选本地图片裁切成正方形；优先级最高，覆盖其他档。</td></tr>
+    <tr><td><span class="pill">Tier 4 · 占位</span></td><td>程序生成</td><td>❌ 不需要</td><td>没有内嵌缩略图时，按类型生成渐变 + 类型字母（N/C/？）的风格化占位图，保证库内视觉一致。</td></tr>
+  </table>
+  <div class="callout"><b>关于「真实播放帧」：</b>若你在设置中配置了 <code>UnrealEditor.exe</code>，可触发 UE 无头渲染来生成更接近真实播放效果的缩略图。这属于<b>可选增强</b>——绝大多数浏览、检索、迁移场景仅靠 Tier 1 内嵌图与 Tier 4 占位图即可完成，无需启动 UE。</div>
+  <ul>
+    <li><b>一键刷新全部缩略图</b>：工具栏「🖼 读取缩略图」会对库内所有资产重新读取内嵌图（Tier 1），没有的回退为占位图。</li>
+    <li><b>单资产重读</b>：右键卡片 →「读取内嵌缩略图」，可只针对选中项刷新。</li>
+    <li><b>手动指定</b>：右键卡片 →「手动设置缩略图 (Tier 3)」，或 Inspector 内「指定缩略图」。</li>
+  </ul>
+
+  <h3><span class="dot"></span>4.3 三种视图</h3>
+  <div class="fig">
+    <svg viewBox="0 0 880 220" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif">
+      <!-- icons -->
+      <rect x="20" y="30" width="250" height="170" rx="12" fill="#161b22" stroke="#2f3845"/>
+      <text x="145" y="54" fill="#a9a1ff" font-size="13" font-weight="700" text-anchor="middle">图标视图</text>
+      <rect x="40" y="70" width="64" height="58" rx="7" fill="#635bff" opacity=".25"/><text x="72" y="104" fill="#a9a1ff" font-size="18" font-weight="800" text-anchor="middle">N</text>
+      <rect x="116" y="70" width="64" height="58" rx="7" fill="#ec4899" opacity=".22"/><text x="148" y="104" fill="#f7a8d4" font-size="18" font-weight="800" text-anchor="middle">C</text>
+      <rect x="192" y="70" width="64" height="58" rx="7" fill="#635bff" opacity=".25"/><text x="224" y="104" fill="#a9a1ff" font-size="18" font-weight="800" text-anchor="middle">N</text>
+      <text x="48" y="148" fill="#cdd6e0" font-size="10">NS_Fire</text><text x="124" y="148" fill="#cdd6e0" font-size="10">PS_Boom</text><text x="200" y="148" fill="#cdd6e0" font-size="10">NS_Spark</text>
+      <text x="48" y="164" fill="#8b949e" font-size="9">Niagara</text><text x="124" y="164" fill="#8b949e" font-size="9">Cascade</text><text x="200" y="164" fill="#8b949e" font-size="9">Niagara</text>
+
+      <!-- list -->
+      <rect x="315" y="30" width="250" height="170" rx="12" fill="#161b22" stroke="#2f3845"/>
+      <text x="440" y="54" fill="#a9a1ff" font-size="13" font-weight="700" text-anchor="middle">列表视图</text>
+      <rect x="335" y="68" width="210" height="26" rx="6" fill="#0d1117" stroke="#272e38"/><text x="346" y="85" fill="#cdd6e0" font-size="10.5">▦ NS_Fire</text>
+      <rect x="335" y="100" width="210" height="26" rx="6" fill="#0d1117" stroke="#272e38"/><text x="346" y="117" fill="#cdd6e0" font-size="10.5">▦ PS_Explosion</text>
+      <rect x="335" y="132" width="210" height="26" rx="6" fill="#0d1117" stroke="#272e38"/><text x="346" y="149" fill="#cdd6e0" font-size="10.5">▦ NS_Spark</text>
+      <rect x="335" y="164" width="210" height="22" rx="6" fill="#0d1117" stroke="#272e38"/><text x="346" y="179" fill="#cdd6e0" font-size="10.5">▦ PS_Smoke</text>
+
+      <!-- details -->
+      <rect x="610" y="30" width="250" height="170" rx="12" fill="#161b22" stroke="#2f3845"/>
+      <text x="735" y="54" fill="#a9a1ff" font-size="13" font-weight="700" text-anchor="middle">详细信息</text>
+      <text x="624" y="76" fill="#8b949e" font-size="9.5">名称</text><text x="760" y="76" fill="#8b949e" font-size="9.5">类型</text><text x="850" y="76" fill="#8b949e" font-size="9.5">大小</text>
+      <line x1="620" y1="84" x2="840" y2="84" stroke="#272e38"/>
+      <text x="624" y="104" fill="#cdd6e0" font-size="10.5">NS_Fire</text><text x="760" y="104" fill="#a9a1ff" font-size="10">N</text><text x="850" y="104" fill="#8b949e" font-size="10">12KB</text>
+      <text x="624" y="128" fill="#cdd6e0" font-size="10.5">PS_Explosion</text><text x="760" y="128" fill="#f7a8d4" font-size="10">C</text><text x="850" y="128" fill="#8b949e" font-size="10">8KB</text>
+      <text x="624" y="152" fill="#cdd6e0" font-size="10.5">NS_Spark</text><text x="760" y="152" fill="#a9a1ff" font-size="10">N</text><text x="850" y="152" fill="#8b949e" font-size="10">15KB</text>
+      <text x="624" y="176" fill="#cdd6e0" font-size="10.5">PS_Smoke</text><text x="760" y="176" fill="#f7a8d4" font-size="10">C</text><text x="850" y="176" fill="#8b949e" font-size="10">10KB</text>
+    </svg>
+    <div class="cap">图 4-2 · 图标 / 列表 / 详细信息 三种视图对比</div>
+  </div>
+  <ul>
+    <li><b>图标视图</b>：卡片网格，可切换 <b>小 / 中 / 大</b> 三种尺寸（工具栏「图标 ▾」旁的尺寸下拉）。</li>
+    <li><b>列表视图</b>：紧凑单行，适合大量资产快速扫读。</li>
+    <li><b>详细信息</b>：表格列展示名称、类型、标签、大小、来源、评分，便于比较。</li>
+  </ul>
+
+  <h3><span class="dot"></span>4.4 搜索与筛选</h3>
+  <ul>
+    <li><b>搜索框</b>（顶部）：输入即过滤，匹配资产<b>名称 / 标签 / 路径</b>，250 毫秒防抖，边输入边出结果。</li>
+    <li><b>类型</b>：全部类型 / Niagara 系统 / Cascade 粒子。</li>
+    <li><b>来源</b>：全部来源 / 纯特效 / 含特效的蓝图（<span class="chip bp">BP</span>）。</li>
+    <li><b>排序</b>：名称 / 类型 / 导入日期 / 文件大小 / 评分 / 随机。</li>
+    <li><b>左侧快捷筛选</b>：未分类、未标签、有缩略图、无缩略图、收藏，一键过滤。</li>
+    <li><b>视图分段</b>（主区标题旁）：全部特效 / 收藏 / 最近。</li>
+  </ul>
+
+  <h3><span class="dot"></span>4.5 组织资产：标签 · 收藏 · 评分 · 备注 · 重命名</h3>
+  <p>选中任意资产后，右侧 Inspector 提供完整的个人化管理：</p>
+  <table>
+    <tr><th>操作</th><th>位置 / 方式</th><th>作用</th></tr>
+    <tr><td>★ 收藏</td><td>Inspector「收藏」按钮 / 卡片右上星标</td><td>标记常用特效，左侧「收藏」快捷筛选可聚合</td></tr>
+    <tr><td># 标签</td><td>Inspector「标签」输入框，回车添加；点标签可删除</td><td>自由分类（如「火焰」「UI」「环境」），支持搜索匹配</td></tr>
+    <tr><td>☆ 评分</td><td>Inspector 五星</td><td>1–5 星质量评级，可参与排序与筛选</td></tr>
+    <tr><td>📝 备注</td><td>Inspector「备注」文本框</td><td>记录用法、来源、注意事项等</td></tr>
+    <tr><td>✎ 重命名</td><td>右键卡片 →「重命名」</td><td>仅修改库内显示名，<b>不动磁盘上的原文件</b></td></tr>
+  </table>
+
+  <h3><span class="dot"></span>4.6 虚拟文件夹</h3>
+  <p>左侧「文件夹」区域点击 ＋ 可新建自定义虚拟文件夹（如「火焰特效」「Boss 技能」），右键任意卡片 →「添加到文件夹」即可把资产归入多个文件夹。虚拟文件夹是库的<b>逻辑分组</b>，不影响磁盘文件结构，也支持重命名与删除。</p>
+
+  <h3><span class="dot"></span>4.7 导出到 UE 工程</h3>
+  <p>选中资产后，工具栏或右键菜单选择「复制到 Content 文件夹」，选择目标 UE 工程的 <code>Content/</code> 目录（选到工程根也会自动识别 <code>Content/</code>）。程序会把资产及其依赖复制到目标目录。</p>
+  <div class="callout warn"><b>未配置 UE 时的提示：</b>若未检测到 <code>UnrealEditor.exe</code>，导出仍会把文件复制到所选文件夹，但<b>不会真正导入进活的 UE 工程</b>。如需引擎内的导入联动，请在设置中配置 UE 路径。</div>
+
+  <h3><span class="dot"></span>4.8 导出 .fxpack（自包含包）</h3>
+  <p>选中一个或多个资产，点击工具栏「📦 导出 .fxpack」或右键「导出 .fxpack」，选择保存位置。这会生成一个 <code>.fxpack</code> 文件——一个自包含的压缩包，里面是 100% 标准的 <code>.uasset</code>，外加清单与缩略图。可邮件发送、上传、或导入任意项目。</p>
+
+  <h3><span class="dot"></span>4.9 导入 .fxpack</h3>
+  <p>点击工具栏「导入 .fxpack」或 Inspector 内「导入 .fxpack」，选择 <code>.fxpack</code> 文件，程序解包把资产收进本地库（含缩略图）。导入<b>零配置、不变粉</b>——因为包内已经带齐了全部依赖 <code>.uasset</code>。</p>
+  <div class="fig">
+    <svg viewBox="0 0 760 170" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif">
+      <defs><marker id="a3" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="#6d5df5"/></marker></defs>
+      <rect x="10" y="55" width="200" height="60" rx="10" fill="#161b22" stroke="#2f3845"/>
+      <text x="110" y="82" fill="#e6edf3" font-size="12" font-weight="700" text-anchor="middle">.fxpack 文件</text>
+      <text x="110" y="100" fill="#8b949e" font-size="10" text-anchor="middle">自包含 zip 包</text>
+      <line x1="210" y1="85" x2="258" y2="85" stroke="#6d5df5" stroke-width="2" marker-end="url(#a3)"/>
+      <rect x="260" y="55" width="200" height="60" rx="10" fill="#161b22" stroke="#2f3845"/>
+      <text x="360" y="82" fill="#e6edf3" font-size="12" font-weight="700" text-anchor="middle">解包 + 收编</text>
+      <text x="360" y="100" fill="#8b949e" font-size="10" text-anchor="middle">.uasset + 依赖 + 缩略图</text>
+      <line x1="460" y1="85" x2="508" y2="85" stroke="#6d5df5" stroke-width="2" marker-end="url(#a3)"/>
+      <rect x="510" y="55" width="240" height="60" rx="10" fill="#1b2230" stroke="#2f3845"/>
+      <text x="630" y="82" fill="#a9a1ff" font-size="12" font-weight="700" text-anchor="middle">进入本地库</text>
+      <text x="630" y="100" fill="#8b949e" font-size="10" text-anchor="middle">零配置 · 不变粉</text>
+    </svg>
+    <div class="cap">图 4-3 · .fxpack 导入流程</div>
+  </div>
+
+  <h3><span class="dot"></span>4.10 资产体检</h3>
+  <p>点击工具栏「🩺 体检」，程序扫描库内全部资产，检查两类问题并弹出报告：</p>
+  <ul>
+    <li><span class="pill" style="background:rgba(226,89,80,.16);color:#f09;">源文件缺失</span> 索引指向的 <code>.uasset</code> 在磁盘上已不存在（标为「损坏 / bad」）。</li>
+    <li><span class="pill" style="background:rgba(245,166,35,.16);color:#f5b85c;">名称重复</span> 多个资产显示名相同（标为「警告 / warn」），便于发现冗余副本。</li>
+  </ul>
+
+  <h3><span class="dot"></span>4.11 回收站与数据安全</h3>
+  <p>删除资产采用<b>软删除</b>机制，先进入回收站，给你反悔的机会：</p>
+  <ul>
+    <li><b>移到回收站</b>：右键卡片 →「移到回收站」，或选中后浮动批量条「🗑 批量移到回收站」。资产从主列表消失，但记录保留在回收站。</li>
+    <li><b>恢复</b>：切到左侧「回收站」，选中后批量条出现「恢复」。</li>
+    <li><b>永久删除</b>：在回收站选中后「永久删除」，才会真正清理库内副本（仅 <code>files/</code> 与 <code>thumbs/</code> 内、且位于库目录下的文件，设有路径安全围栏）。</li>
+    <li><b>清空回收站</b>：一次性清理全部回收项，操作前会二次确认。</li>
+  </ul>
+  <div class="callout danger"><b>重要：</b>「引用」模式下，即使永久删除也只动库索引与（复制模式下的）库内副本，<b>绝不会删除你原始项目里的 <code>.uasset</code></b>。复制模式下的删除还被限制为只能删库目录之内，杜绝误删库外文件。</div>
+</section>
+
+<!-- ============ 5. .fxpack ============ -->
+<section id="c5">
+  <h2><span class="num">5</span>.fxpack 格式详解</h2>
+  <p class="lead"><code>.fxpack</code> 不是新的资产格式，而是一个<b>「带清单的 zip 容器」</b>，里面装的 100% 是标准 <code>.uasset</code>。引擎不认识 <code>.fxpack</code> 后缀——它只在「库管理 / 分享」层存在；导入进 UE 后，资产全部回归原生 <code>.uasset</code>，引擎零感知。</p>
+
+  <div class="fig">
+    <svg viewBox="0 0 460 360" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif">
+      <rect x="120" y="20" width="220" height="50" rx="12" fill="#635bff"/><text x="230" y="51" fill="#fff" font-size="15" font-weight="800" text-anchor="middle">my_fire.fxpack</text>
+      <text x="230" y="84" fill="#8b949e" font-size="11" text-anchor="middle">（标准 zip 包）</text>
+      <line x1="230" y1="70" x2="230" y2="96" stroke="#6d5df5" stroke-width="2"/>
+
+      <rect x="40" y="100" width="380" height="44" rx="9" fill="#161b22" stroke="#2f3845"/>
+      <text x="56" y="127" fill="#e6edf3" font-size="12" font-weight="700">📄 manifest.json</text>
+      <text x="424" y="127" fill="#8b949e" font-size="10" text-anchor="end">标签 / 评分 / 作者 / 依赖清单</text>
+
+      <rect x="40" y="152" width="380" height="64" rx="9" fill="#161b22" stroke="#2f3845"/>
+      <text x="56" y="176" fill="#a9a1ff" font-size="12" font-weight="700">📁 assets/</text>
+      <text x="56" y="196" fill="#8b949e" font-size="10">NS_Fire.uasset</text>
+      <text x="180" y="196" fill="#8b949e" font-size="10">M_Fire.uasset</text>
+      <text x="312" y="196" fill="#8b949e" font-size="10">T_Noise.uasset …</text>
+      <text x="424" y="176" fill="#8b949e" font-size="10" text-anchor="end">特效本体 + 递归依赖</text>
+
+      <rect x="40" y="224" width="380" height="44" rx="9" fill="#161b22" stroke="#2f3845"/>
+      <text x="56" y="251" fill="#f7a8d4" font-size="12" font-weight="700">🖼 thumbs/</text>
+      <text x="424" y="251" fill="#8b949e" font-size="10" text-anchor="end">thumb.jpg 静态缩略图</text>
+
+      <rect x="40" y="276" width="380" height="44" rx="9" fill="#161b22" stroke="#2f3845"/>
+      <text x="56" y="303" fill="#cdd6e0" font-size="12" font-weight="700">🔗 deps_graph.json</text>
+      <text x="424" y="303" fill="#8b949e" font-size="10" text-anchor="end">依赖关系图（重映射用）</text>
+    </svg>
+    <div class="cap">图 5-1 · .fxpack 内部结构</div>
+  </div>
+
+  <table>
+    <tr><th>成员</th><th>作用</th></tr>
+    <tr><td><code>manifest.json</code></td><td>我们附加的元数据：名称、类型、引擎版本、性能档、标签、作者、许可、依赖列表——<code>.uasset</code> 装不下的信息都放这里。</td></tr>
+    <tr><td><code>assets/</code></td><td>全是标准 <code>.uasset</code>：特效本体 + 递归提取的材质 / 贴图 / 曲线 / 网格等全部依赖。</td></tr>
+    <tr><td><code>thumbs/</code></td><td>静态缩略图（唯一预览产物，无视频）。</td></tr>
+    <tr><td><code>deps_graph.json</code></td><td>依赖关系图，用于导入时把内部引用从「原始项目路径」重映射到「当前项目实际路径」。</td></tr>
+  </table>
+  <div class="callout"><b>为什么用 .fxpack 而不是裸 Migrate？</b> 一个 Niagara 特效从来不是单个文件，它引用材质、贴图、曲线、网格……只拷一个 <code>.uasset</code> 必然变粉。<code>.fxpack</code> 把特效 + 全部依赖捆成一个文件，别人导入零配置、不变粉，还能带上标签与缩略图做离线浏览。</div>
+</section>
+
+<!-- ============ 6. 快捷键 ============ -->
+<section id="c6">
+  <h2><span class="num">6</span>快捷键</h2>
+  <table>
+    <tr><th>快捷键</th><th>功能</th><th>说明</th></tr>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>A</kbd></td><td>全选当前可见卡片</td><td>在文本框内输入时不会触发，避免误选</td></tr>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>D</kbd></td><td>清除选择</td><td>取消所有已选资产</td></tr>
+    <tr><td><kbd>Delete</kbd> / <kbd>Backspace</kbd></td><td>移到回收站</td><td>将当前选择移动到回收站（同样尊重文本输入焦点）</td></tr>
+    <tr><td>双击卡片</td><td>查看大图（Lightbox）</td><td>在 Inspector 大图上双击也有相同效果</td></tr>
+    <tr><td>拖拽文件夹 / .uasset 入窗</td><td>快速扫描导入</td><td>等价于「扫描目录」</td></tr>
+  </table>
+</section>
+
+<!-- ============ 7. FAQ ============ -->
+<section id="c7">
+  <h2><span class="num">7</span>常见问题（FAQ）</h2>
+  <div class="card">
+    <h4>Q：必须安装 Unreal Engine 才能用吗？</h4>
+    <p><b>不需要。</b>扫描、缩略图（读取内嵌图）、标签、收藏、检索、导出 / 导入 <code>.fxpack</code> 全部纯 Python 完成。只有想用 UE 渲染「真实播放帧缩略图」时才需要本机装有 UE 并配置路径。</p>
+  </div>
+  <div class="card">
+    <h4>Q：为什么有些卡片显示的是渐变占位图而不是真实画面？</h4>
+    <p>那是因为该 <code>.uasset</code> 没有可被读取的内嵌缩略图（Tier 1 缺失），程序自动生成了 Tier 4 占位图。你可以右键 →「手动设置缩略图」指定一张图，或配置 UE 后渲染真实帧。</p>
+  </div>
+  <div class="card">
+    <h4>Q：导入 .fxpack 后打开变粉怎么办？</h4>
+    <p>正常情况下不会——<code>.fxpack</code> 已递归打包全部依赖，导入零配置。若变粉，通常是源包本身在导出时依赖未完整收集，请用「资产体检」核对，或回到导出端重新打包。</p>
+  </div>
+  <div class="card">
+    <h4>Q：删除资产会删掉我项目里的原文件吗？</h4>
+    <p><b>不会。</b>「引用」模式只改库索引；「复制」模式的永久删除也只清理库目录（<code>files/</code>、<code>thumbs/</code>）内的副本，且有路径安全围栏，绝不动库外文件。</p>
+  </div>
+  <div class="card">
+    <h4>Q：扫描时为什么会跳过一些 .uasset？</h4>
+    <p>若开启「仅导入 FX 特效」，非 Niagara/Cascade 的文件（纯蓝图、材质、网格等）会被跳过。这是预期行为，目的是保持库内只存单特效。</p>
+  </div>
+  <div class="card">
+    <h4>Q：库数据存在哪里？</h4>
+    <p>配置文件 <code>%USERPROFILE%/.fxlibrary/config.json</code>，库本体（SQLite 索引 + <code>thumbs/</code> 缩略图 + <code>files/</code> 副本）默认在 <code>%USERPROFILE%/.fxlibrary/library/</code>。重装程序不会自动删这些。</p>
+  </div>
+</section>
+
+<!-- ============ 8. 技术规格 ============ -->
+<section id="c8">
+  <h2><span class="num">8</span>技术规格与数据模型</h2>
+  <div class="grid2">
+    <div class="card"><h4>技术栈</h4>
+      <ul>
+        <li><b>语言 / GUI</b>：Python 3 + PySide6 (Qt 6)</li>
+        <li><b>本地索引</b>：SQLite</li>
+        <li><b>缩略图</b>：纯 Python 解析 <code>.uasset</code> 内嵌数据 + Pillow 生成占位图</li>
+        <li><b>可选增强</b>：UE 5.x 无头桥（<code>-ExecutePythonScript</code> + <code>-RenderOffScreen</code>）</li>
+        <li><b>分发</b>：PyInstaller 打包为独立 <code>.exe</code></li>
+      </ul>
+    </div>
+    <div class="card"><h4>资产数据模型（FXAsset）</h4>
+      <ul>
+        <li><code>source_path</code>：原始 <code>.uasset</code> 绝对路径（主键）</li>
+        <li><code>type</code>：Niagara / Cascade / Unknown</li>
+        <li><code>blueprint</code>：是否内嵌于蓝图（<span class="chip bp">BP</span>）</li>
+        <li><code>tags / favorite / rating / note</code>：标签、收藏、评分(0–5)、备注</li>
+        <li><code>thumb_path / tier / has_thumb</code>：缩略图路径、档位、是否真实图</li>
+        <li><code>health</code>：ok / warn / bad</li>
+        <li><code>source</code>：scan（扫描入库）/ fxpack（导入）</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3><span class="dot"></span>配置文件字段</h3>
+  <table>
+    <tr><th>字段</th><th>含义</th><th>默认值</th></tr>
+    <tr><td><code>ue_editor_path</code></td><td><code>UnrealEditor.exe</code> 绝对路径（可选）</td><td>空</td></tr>
+    <tr><td><code>library_dir</code></td><td>库根目录（DB + thumbs + files）</td><td><code>~/.fxlibrary/library</code></td></tr>
+    <tr><td><code>scan_roots</code></td><td>「自动扫描」搜索的根目录列表</td><td>[]</td></tr>
+    <tr><td><code>import_mode</code></td><td>reference（引用）/ copy（复制）</td><td>reference</td></tr>
+    <tr><td><code>import_fx_only</code></td><td>仅导入 FX，跳过未知类型</td><td>true</td></tr>
+    <tr><td><code>read_thumbs_on_import</code></td><td>导入时读取内嵌缩略图</td><td>true</td></tr>
+    <tr><td><code>language</code></td><td>auto / zh / en</td><td>auto</td></tr>
+  </table>
+
+  <div class="callout"><b>一句话总结：</b>用「PySide6 独立客户端做库与界面，可选 UE 无头桥做真实渲染增强」——日常完全离线、不依赖引擎，跨项目特效迁移通过自包含 <code>.fxpack</code> 实现零配置、不变粉。</div>
+</section>
+
+<footer>
+  FX Library · Niagara / Cascade 粒子特效库管理客户端<br/>
+  本文档基于当前版本功能编写 · 暗色主题（Stripe 柔光风格）
+</footer>
+
+</div>
+<button class="tocbtn" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑ 回到顶部</button>
+</body>
+</html>

@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>FXLibraryClient · UI 现状 vs Redesign 概念</title>
+<style>
+  :root{
+    --indigo:#635bff; --indigo-d:#4338ca; --cyan:#00a3ff;
+    --bg:#f6f8fb; --panel:#ffffff; --panel2:#f1f4f9;
+    --border:#e6e9ef; --border2:#d3d9e3;
+    --text:#0a2540; --muted:#5a6b82; --muted2:#64748b;
+    --amber:#f5a623; --niagara:#0ea5e9; --cascade:#a855f7;
+    --shadow-sm:0 1px 2px rgba(10,37,64,.08);
+    --shadow-md:0 4px 12px rgba(10,37,64,.10), 0 1px 3px rgba(10,37,64,.06);
+    --shadow-lg:0 12px 32px rgba(10,37,64,.14), 0 4px 10px rgba(10,37,64,.08);
+    --r-sm:6px; --r-md:10px; --r-lg:14px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Segoe UI","Microsoft YaHei UI",system-ui,sans-serif;
+    background:#eef1f6;color:var(--text);padding:28px;}
+  h1{font-size:22px;margin:0 0 4px}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:22px}
+  .wrap{display:grid;grid-template-columns:1fr 1fr;gap:22px;max-width:1280px;margin:0 auto}
+  .col{background:#fff;border:1px solid var(--border);border-radius:18px;overflow:hidden;
+    box-shadow:var(--shadow-md)}
+  .col h2{font-size:14px;margin:0;padding:12px 16px;display:flex;align-items:center;gap:8px}
+  .tag{font-size:11px;font-weight:700;padding:2px 9px;border-radius:999px}
+  .tag.bad{background:#fde8e8;color:#c0392b}
+  .tag.good{background:#e6fbf3;color:#0a7d5a}
+  .stage{background:var(--bg);padding:14px}
+
+  /* ---------- fake app frame ---------- */
+  .app{display:grid;grid-template-rows:auto auto 1fr;height:430px;border-radius:12px;overflow:hidden;
+    border:1px solid var(--border)}
+  .hdr{display:flex;align-items:center;gap:10px;padding:10px 14px}
+  .brand{font-weight:700;font-size:15px}
+  .toolbar{display:flex;flex-direction:column;gap:6px;padding:8px 10px}
+  .trow{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+  .body{display:grid;grid-template-columns:170px 1fr;min-height:0}
+  .side{border-right:1px solid var(--border);padding:10px;display:flex;flex-direction:column;gap:6px;overflow:hidden}
+  .content{padding:12px;overflow:auto}
+  /* buttons */
+  .btn{font-size:11px;font-weight:600;padding:5px 9px;border-radius:8px;border:1px solid var(--border2);
+    background:#fff;color:var(--text);white-space:nowrap}
+  .btn.pri{background:var(--indigo-d);color:#fff;border:none}
+  .nav{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted);padding:6px 9px;
+    border-radius:8px}
+  .nav.on{background:rgba(99,91,255,.10);color:var(--indigo);font-weight:600}
+  .combo{font-size:11px;padding:4px 8px;border-radius:8px;border:1px solid var(--border2);background:#fff;color:var(--muted)}
+  .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .card{background:#fff;border:1px solid var(--border);padding:8px}
+  .thumb{height:54px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:20px;color:#fff;margin-bottom:6px}
+  .cname{font-size:12px;font-weight:600}
+  .chip{display:inline-block;font-size:10px;font-weight:700;padding:1px 6px;border-radius:6px;margin-top:4px}
+
+  /* ---------- CURRENT (left): deliberately flat ---------- */
+  .cur .app{border-radius:0}
+  .cur .hdr{background:#fff;border-bottom:1px solid var(--border)}
+  .cur .toolbar{background:#fff;border-bottom:1px solid var(--border)}
+  .cur .side{background:#fff}
+  .cur .card{border-radius:14px;box-shadow:0 1px 2px rgba(10,37,64,.08)}
+  .cur .thumb{border-radius:14px;background:linear-gradient(135deg,#8a95a5,#64748b)}
+  .cur .dead{height:64px;border:1px dashed var(--border2);border-radius:8px;display:flex;
+    align-items:center;justify-content:center;color:var(--muted2);font-size:11px;margin-bottom:6px}
+
+  /* ---------- REDESIGN (right): stripe-y ---------- */
+  .red .app{background:var(--bg)}
+  .red .hdr{background:linear-gradient(100deg,rgba(99,91,255,.10),rgba(0,163,255,.06));border-bottom:1px solid var(--border)}
+  .red .mono{width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,var(--indigo),var(--cyan));
+    color:#fff;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;
+    box-shadow:var(--shadow-sm)}
+  .red .toolbar{background:var(--panel);border-bottom:1px solid var(--border)}
+  .red .cluster{display:flex;gap:6px;align-items:center;padding:0 8px}
+  .red .div{border-left:1px solid var(--border);height:22px}
+  .red .side{background:var(--panel)}
+  .red .hero{background:linear-gradient(120deg,rgba(99,91,255,.14),rgba(0,163,255,.08));
+    border:1px solid var(--border);border-radius:var(--r-lg);padding:10px 12px;margin-bottom:8px}
+  .red .hero .big{font-size:18px;font-weight:800}
+  .red .hero .small{font-size:11px;color:var(--muted)}
+  .red .nav.on{background:linear-gradient(90deg,var(--indigo),rgba(99,91,255,.12));color:#fff}
+  .red .card{border-radius:var(--r-lg);box-shadow:var(--shadow-md);transition:transform .15s,box-shadow .15s}
+  .red .card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg)}
+  .red .thumb{border-radius:var(--r-md);background:linear-gradient(135deg,var(--indigo),var(--cyan))}
+
+  /* ---------- annotation badges ---------- */
+  .notes{padding:12px 16px;font-size:12px;line-height:1.7;border-top:1px solid var(--border)}
+  .notes .x{color:#c0392b;font-weight:700}
+  .notes .v{color:#0a7d5a;font-weight:700}
+  .legend{max-width:1280px;margin:22px auto 0;background:#fff;border:1px solid var(--border);
+    border-radius:14px;padding:16px 20px;font-size:12.5px;line-height:1.9}
+  .legend b{color:var(--indigo-d)}
+  .swatch{display:inline-block;width:11px;height:11px;border-radius:3px;vertical-align:middle;margin:0 3px}
+</style>
+</head>
+<body>
+  <h1>FXLibraryClient · UI 现状 vs Redesign 概念</h1>
+  <div class="sub">左侧＝当前"平淡标准皮"（刻意画平）；右侧＝Stripe 柔光 redesign 概念。对照看 §二/§三 的扣分点与 §五 的改造方向。</div>
+
+  <div class="wrap">
+    <!-- ============ CURRENT ============ -->
+    <div class="col cur">
+      <h2><span class="tag bad">现状</span> 当前 · 平淡标准三栏皮</h2>
+      <div class="stage">
+        <div class="app">
+          <div class="hdr"><div class="brand">FX Library</div></div>
+          <div class="toolbar">
+            <div class="trow">
+              <span class="btn pri">＋ 扫描目录</span>
+              <span class="btn">缩略图</span>
+              <span class="btn">导出fxpack</span>
+              <span class="btn">体检</span>
+              <span class="btn">全选</span><span class="btn">反选</span><span class="btn">清除</span>
+            </div>
+            <div class="trow">
+              <span class="combo">类型 ▾</span><span class="combo">来源 ▾</span>
+              <span class="combo">排序 ▾</span><span class="combo">视图 ▾</span><span class="combo">大小 ▾</span>
+            </div>
+          </div>
+          <div class="body">
+            <div class="side">
+              <div class="dead">↑ 约 200px 侧栏死区（L-2）</div>
+              <div class="nav on">★ 收藏</div>
+              <div class="nav">？ 未分类</div>
+              <div class="nav"># 未标签</div>
+              <div class="nav">▦ 文件夹树…</div>
+            </div>
+            <div class="content">
+              <div class="cards">
+                <div class="card"><div class="thumb" style="background:linear-gradient(135deg,#8a95a5,#64748b)">N</div><div class="cname">NE_EnergyFlow</div><span class="chip" style="background:#0ea5e914;color:#0ea5e9">Niagara</span></div>
+                <div class="card"><div class="thumb" style="background:linear-gradient(135deg,#8a95a5,#64748b)">C</div><div class="cname">CS_IceWall</div><span class="chip" style="background:#a855f714;color:#a855f7">Cascade</span></div>
+                <div class="card"><div class="thumb" style="background:linear-gradient(135deg,#8a95a5,#64748b)">N</div><div class="cname">NS_Trail_Dry</div><span class="chip" style="background:#0ea5e914;color:#0ea5e9">Niagara</span></div>
+                <div class="card"><div class="thumb" style="background:linear-gradient(135deg,#8a95a5,#64748b)">B</div><div class="cname">BP_SpawnCtrl</div><span class="chip" style="background:#10b98114;color:#10b981">Blueprint</span></div>
+                <div class="card"><div class="thumb" style="background:linear-gradient(135deg,#8a95a5,#64748b)">T</div><div class="cname">TX_Noise</div><span class="chip" style="background:#f59e0b14;color:#f59e0b">Texture</span></div>
+                <div class="card"><div class="thumb" style="background:linear-gradient(135deg,#8a95a5,#64748b)">M</div><div class="cname">MI_Energy</div><span class="chip" style="background:#f43f5e14;color:#f43f5e">Material</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="notes">
+        <span class="x">✕ L-1</span> 工具栏两行 13 控件零分组，挤在 84px。<br>
+        <span class="x">✕ L-2</span> 侧栏上方 ~200px 死区，下方信息挤作一团。<br>
+        <span class="x">✕ A-1</span> "柔光渐变"没落地——缩略图是灰渐变，主按钮纯色块。<br>
+        <span class="x">✕ A-3</span> 卡片仅单层极弱阴影，像"贴上去"。<br>
+        <span class="x">✕ A-4</span> 圆角 8/14 混用，无刻度。<br>
+        <span class="x">✕ D-1</span> 品牌只是文字，无标识。
+      </div>
+    </div>
+
+    <!-- ============ REDESIGN ============ -->
+    <div class="col red">
+      <h2><span class="tag good">概念</span> Redesign · Stripe 柔光概念</h2>
+      <div class="stage">
+        <div class="app">
+          <div class="hdr"><div class="mono">FX</div><div class="brand">FX Library</div></div>
+          <div class="toolbar">
+            <div class="trow">
+              <div class="cluster"><span class="btn pri">＋ 扫描目录</span></div>
+              <div class="div"></div>
+              <div class="cluster"><span class="btn">缩略图</span><span class="btn">导出fxpack</span><span class="btn">体检</span></div>
+              <div class="div"></div>
+              <div class="cluster"><span class="combo">类型 ▾</span><span class="combo">来源 ▾</span><span class="combo">排序 ▾</span></div>
+              <div class="div"></div>
+              <div class="cluster"><span class="combo">视图 ▾</span><span class="combo">大小 ▾</span></div>
+            </div>
+          </div>
+          <div class="body">
+            <div class="side">
+              <div class="hero"><div class="big">1,284 资产</div><div class="small">★ 96 已收藏 · 112 无缩略图</div></div>
+              <div class="nav on">★ 收藏</div>
+              <div class="nav">？ 未分类</div>
+              <div class="nav"># 未标签</div>
+              <div class="nav">▦ 文件夹树…</div>
+            </div>
+            <div class="content">
+              <div class="cards">
+                <div class="card"><div class="thumb">N</div><div class="cname">NE_EnergyFlow</div><span class="chip" style="background:#0ea5e914;color:#0ea5e9">Niagara</span></div>
+                <div class="card"><div class="thumb">C</div><div class="cname">CS_IceWall</div><span class="chip" style="background:#a855f714;color:#a855f7">Cascade</span></div>
+                <div class="card"><div class="thumb">N</div><div class="cname">NS_Trail_Dry</div><span class="chip" style="background:#0ea5e914;color:#0ea5e9">Niagara</span></div>
+                <div class="card"><div class="thumb">B</div><div class="cname">BP_SpawnCtrl</div><span class="chip" style="background:#10b98114;color:#10b981">Blueprint</span></div>
+                <div class="card"><div class="thumb">T</div><div class="cname">TX_Noise</div><span class="chip" style="background:#f59e0b14;color:#f59e0b">Texture</span></div>
+                <div class="card"><div class="thumb">M</div><div class="cname">MI_Energy</div><span class="chip" style="background:#f43f5e14;color:#f43f5e">Material</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="notes">
+        <span class="v">✓ A-1</span> 主 CTA 双色渐变 + 侧栏 hero 柔光带。<br>
+        <span class="v">✓ L-1</span> 工具栏三簇 + 细分隔线，主操作/筛选/视图分明。<br>
+        <span class="v">✓ L-2</span> 死区变 hero 统计卡，空间变信息资产。<br>
+        <span class="v">✓ A-3</span> 卡片双层阴影 + hover 抬升 2px（微交互）。<br>
+        <span class="v">✓ A-4</span> 半径刻度 6/10/14 统一。<br>
+        <span class="v">✓ D-1</span> 左上 "FX" 柔光 monogram 作品牌标识。
+      </div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <b>配色与 token（右侧概念即落地目标）</b><br>
+    主色 <span class="swatch" style="background:#635bff"></span> indigo #635bff　·　辅色 <span class="swatch" style="background:#00a3ff"></span> cyan #00a3ff（当前几乎没用，A-1 改造核心）<br>
+    半径刻度：<b>r-sm 6</b>（芯片） / <b>r-md 10</b>（输入/按钮） / <b>r-lg 14</b>（卡片/面板）<br>
+    阴影阶梯：<b>sm</b> 0 1px 2px / <b>md</b> 0 4px 12px+0 1px 3px / <b>lg</b> 0 12px 32px+0 4px 10px（ambient+key 双层）<br>
+    当前主要差距：渐变语言缺失、色彩单调、层次薄弱、布局有空洞有拥挤、无品牌/空态插画/微交互/字体阶梯。
+  </div>
+</body>
+</html>

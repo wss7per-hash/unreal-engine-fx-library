@@ -1,0 +1,89 @@
+# app/ui/settings_dialog.py -- configure language, theme and FX-only import.
+
+from PySide6.QtWidgets import (QDialog, QFormLayout,
+                               QVBoxLayout, QHBoxLayout,
+                               QDialogButtonBox, QComboBox, QCheckBox,
+                               QLineEdit, QPushButton, QFileDialog)
+from PySide6.QtCore import Qt
+
+from app import config as cfg
+from app.i18n import tr
+
+
+class SettingsDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle(tr("settings_title"))
+        self.cfg = cfg.load()
+        self.setMinimumWidth(440)
+
+        self.lang_combo = QComboBox()
+        self.lang_combo.addItem(tr("choose_language"), "auto")
+        self.lang_combo.addItem("中文", "zh")
+        self.lang_combo.addItem("English", "en")
+        current = self.cfg.get("language", "auto")
+        idx = self.lang_combo.findData(current)
+        if idx >= 0:
+            self.lang_combo.setCurrentIndex(idx)
+
+        self.theme_combo = QComboBox()
+        self.theme_combo.addItem(tr("theme_auto"), "auto")
+        self.theme_combo.addItem(tr("theme_light"), "light")
+        self.theme_combo.addItem(tr("theme_dark"), "dark")
+        current_t = self.cfg.get("theme", "auto")
+        idx_t = self.theme_combo.findData(current_t)
+        if idx_t >= 0:
+            self.theme_combo.setCurrentIndex(idx_t)
+
+        self.fx_only_chk = QCheckBox(tr("import_fx_only"))
+        self.fx_only_chk.setChecked(bool(self.cfg.get("import_fx_only", True)))
+
+        self.skip_import_chk = QCheckBox(tr("skip_import_dialog"))
+        self.skip_import_chk.setChecked(bool(self.cfg.get("skip_import_dialog", False)))
+
+        self.ue_edit = QLineEdit()
+        self.ue_edit.setPlaceholderText(tr("settings_ue_placeholder"))
+        self.ue_edit.setText(self.cfg.get("ue_editor_path", ""))
+        self.ue_btn = QPushButton(tr("browse"))
+        self.ue_btn.setObjectName("secondary")
+        self.ue_btn.clicked.connect(self._browse_ue)
+        ue_row = QHBoxLayout()
+        ue_row.setSpacing(8)
+        ue_row.addWidget(self.ue_edit, 1)
+        ue_row.addWidget(self.ue_btn)
+
+        form = QFormLayout()
+        form.setSpacing(14)
+        form.setLabelAlignment(Qt.AlignRight)
+        form.addRow(tr("import_fx_only"), self.fx_only_chk)
+        form.addRow("", self.skip_import_chk)
+        form.addRow(tr("theme"), self.theme_combo)
+        form.addRow(tr("language"), self.lang_combo)
+        form.addRow(tr("settings_ue_path"), ue_row)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+
+        layout = QVBoxLayout(self)
+        layout.setSpacing(16)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.addLayout(form)
+        layout.addStretch(1)
+        layout.addWidget(buttons)
+
+    def _browse_ue(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self, tr("select_ue_editor"), self.ue_edit.text(),
+            "UnrealEditor (UnrealEditor.exe);;Executable (*.exe)")
+        if path:
+            self.ue_edit.setText(path)
+
+    def accept(self):
+        self.cfg["import_fx_only"] = self.fx_only_chk.isChecked()
+        self.cfg["skip_import_dialog"] = self.skip_import_chk.isChecked()
+        self.cfg["language"] = self.lang_combo.currentData() or "auto"
+        self.cfg["theme"] = self.theme_combo.currentData() or "auto"
+        self.cfg["ue_editor_path"] = self.ue_edit.text().strip()
+        cfg.save(self.cfg)
+        super().accept()

@@ -1,0 +1,30 @@
+# ===== WorkBuddy session data (never commit) =====
+.workbuddy/
+
+# ===== Python =====
+**/__pycache__/
+**/*.py[cod]
+**/*.egg-info/
+.Python
+
+# ===== Virtual env / build / dist =====
+FXLibraryClient/.venv/
+FXLibraryClient/build/
+FXLibraryClient/dist/
+
+# ===== Runtime databases & temp artifacts =====
+*.db
+*.sqlite
+*.sqlite3
+FXLibraryClient/_live.txt
+FXLibraryClient/_run_qa.py
+FXLibraryClient/qa_report.txt
+FXLibraryClient/tools/qa_report.txt
+FXLibraryClient/tools/_qa_*.txt
+
+# ===== OS / editor =====
+.DS_Store
+Thumbs.db
+*.log
+.idea/
+.vscode/
