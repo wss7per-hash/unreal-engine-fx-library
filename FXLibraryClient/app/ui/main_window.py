@@ -302,8 +302,11 @@ class MainWindow(QMainWindow):
                 self._drag_geo = self.geometry()
                 self._drag_pos = e.globalPosition().toPoint()
                 return
-            # Then check for title bar drag-to-move
-            if self._is_in_title_bar(pos):
+            # Drag-to-move is ONLY allowed from the custom title bar or the
+            # passive sidebar background frames.  Interactive controls (tag chips,
+            # filter combos, the folder tree, grid cards, etc.) must keep
+            # their clicks — so we never start a drag from them.
+            if self._drag_allowed_at(pos):
                 self._drag_pos = e.globalPosition().toPoint() - self.frameGeometry().topLeft()
                 return
         super().mousePressEvent(e)
@@ -372,39 +375,43 @@ class MainWindow(QMainWindow):
         self._drag_pos = global_pos
 
     def _is_in_title_bar(self, pos):
-        """Check if a position is within a draggable area of the window.
+        """True only when `pos` (window-local) is inside the custom title bar."""
+        if not hasattr(self, 'title_bar'):
+            return False
+        tb = self.title_bar
+        gp = tb.mapToGlobal(QPoint(0, 0))
+        r = QRect(gp.x(), gp.y(), tb.width(), tb.height())
+        return r.contains(self.mapToGlobal(pos))
 
-        Drag zone includes ONLY:
-        1. The custom title bar (34px)
-        2. The toolbar area below it
+    # Widget types that must keep their own mouse clicks (never start a drag).
+    _INTERACTIVE = (QPushButton, QComboBox, QLineEdit, QAbstractItemView,
+                     QTreeWidget, QCheckBox, QListView, QDialogButtonBox)
 
-        We do NOT classify generic background widgets as draggable because
-        childAt() may return a container widget (e.g. the QVBoxLayout's
-        parent QWidget) that sits *behind* interactive children like tag
-        chips.  Classifying such containers as draggable would steal mouse
-        clicks from the buttons they contain — which is exactly why tag
-        filtering broke after the previous over-expansion.
+    def _drag_allowed_at(self, pos):
+        """Decide whether a left-press at `pos` may begin a window drag.
+
+        Allowed ONLY from:
+          * the custom title bar, OR
+          * the passive sidebar background frames (sidebar / tagbrowser / folderframe)
+
+        Everything else — tag chips, filter combos, the folder tree, grid
+        cards, search box, buttons — keeps its click.  This is what was
+        missing before: the old code treated generic background containers as
+        draggable and `childAt()` would resolve to the container *behind* a
+        chip, silently eating the click and breaking filtering/tag/folder.
         """
-        global_pos = self.mapToGlobal(pos)
-
-        # Zone 1: custom title bar
-        if hasattr(self, 'title_bar'):
-            tb_geom = self.title_bar.geometry()
-            tb_top_left = self.title_bar.mapToGlobal(QPoint(0, 0))
-            global_rect = QRect(tb_top_left.x(), tb_top_left.y(),
-                                tb_geom.width(), tb_geom.height())
-            if global_rect.contains(global_pos):
-                return True
-
-        # Zone 2: toolbar area (below title bar)
-        if hasattr(self, 'toolbar') and self.toolbar.isVisible():
-            tb_geom = self.toolbar.geometry()
-            tb_top_left = self.toolbar.mapToGlobal(QPoint(0, 0))
-            global_rect = QRect(tb_top_left.x(), tb_top_left.y(),
-                                tb_geom.width(), tb_geom.height())
-            if global_rect.contains(global_pos):
-                return True
-
+        # 1) Title bar is always draggable.
+        if self._is_in_title_bar(pos):
+            return True
+        # 2) Otherwise only the passive sidebar frames may drag.
+        child = self.childAt(pos)
+        if child is None:
+            return False
+        if isinstance(child, MainWindow._INTERACTIVE):
+            return False
+        # The hero card has its own click handler (go to "All"); keep it.
+        if child.objectName() in ("sidebar", "tagbrowser", "folderframe"):
+            return True
         return False
 
     def _toggle_maximize(self):
