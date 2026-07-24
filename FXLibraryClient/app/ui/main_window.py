@@ -22,7 +22,7 @@ from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                                QTableWidgetItem, QHeaderView, QStackedWidget,
                                QAbstractItemView, QGraphicsOpacityEffect,
                                QGraphicsDropShadowEffect, QListView)
-from PySide6.QtCore import (Qt, QPoint, QTimer, QSize, Signal, QEvent,
+from PySide6.QtCore import (Qt, QPoint, QRect, QTimer, QSize, Signal, QEvent,
                             QPropertyAnimation, QEasingCurve)
 from PySide6.QtGui import (QPixmap, QIcon, QImage, QColor, QPainter, QFont,
                             QPen, QKeySequence, QShortcut)
@@ -372,16 +372,64 @@ class MainWindow(QMainWindow):
         self._drag_pos = global_pos
 
     def _is_in_title_bar(self, pos):
-        """Check if a position is within the custom title bar (for drag-to-move)."""
-        if not hasattr(self, 'title_bar'):
-            return False
-        tb_geom = self.title_bar.geometry()
-        # Title bar is a direct child of central widget; map to global coords
-        tb_top_left = self.title_bar.mapToGlobal(QPoint(0, 0))
-        global_rect = QRect(tb_top_left.x(), tb_top_left.y(),
-                            tb_geom.width(), tb_geom.height())
-        global_pos = self.mapToGlobal(pos)
-        return global_rect.contains(global_pos)
+        """Check if a position is within a draggable area of the window.
+
+        Drag zone includes:
+        1. The custom title bar (34px)
+        2. The toolbar area below it (~80px)
+        3. Any non-interactive background area (plain QFrame/QWidget with no
+           objectName that suggests interactivity)
+        """
+        # Zone 1: custom title bar
+        if hasattr(self, 'title_bar'):
+            tb_geom = self.title_bar.geometry()
+            tb_top_left = self.title_bar.mapToGlobal(QPoint(0, 0))
+            global_rect = QRect(tb_top_left.x(), tb_top_left.y(),
+                                tb_geom.width(), tb_geom.height())
+            global_pos = self.mapToGlobal(pos)
+            if global_rect.contains(global_pos):
+                return True
+
+        # Zone 2: toolbar area (below title bar, up to ~120px from top)
+        if hasattr(self, 'toolbar') and self.toolbar.isVisible():
+            tb_geom = self.toolbar.geometry()
+            tb_top_left = self.toolbar.mapToGlobal(QPoint(0, 0))
+            global_rect = QRect(tb_top_left.x(), tb_top_left.y(),
+                                tb_geom.width(), tb_geom.height())
+            global_pos = self.mapToGlobal(pos)
+            if global_rect.contains(global_pos):
+                return True
+
+        # Zone 3: non-interactive background areas
+        # Use childAt to find what widget is at this position.
+        # If it's a "background" type widget (not a button, line edit, etc.),
+        # allow dragging from it.
+        child = self.childAt(pos)
+        if child is not None:
+            obj_name = child.objectName() or ""
+            child_cls = child.__class__.__name__
+            # Non-interactive widgets that should support drag-to-move
+            passive_widgets = {
+                'QFrame', 'QWidget', 'QScrollArea', 'QSplitter',
+                'QVBoxLayout', 'QHBoxLayout', 'QStackedWidget',
+            }
+            # Interactive objectNames that should NOT be draggable
+            interactive_names = {
+                'toolbarprimary', 'act', 'icon', 'iconghost', 'nav',
+                'tag', 'tagchipbar', 'libbtn', 'sfbtn', 'secondary',
+                'seg', 'lang', 'star', 'cardfav', 'cardcheck',
+                'batchbtn', 'batchbtnprimary', 'batchbtndanger',
+                'inspexp', 'winctl', 'winclose', 'primary', 'danger',
+            }
+            if (child_cls in passive_widgets
+                    and obj_name not in interactive_names
+                    and not isinstance(child, QPushButton)
+                    and not isinstance(child, QLineEdit)
+                    and not isinstance(child, QComboBox)
+                    and not isinstance(child, QLabel)):  # exclude labels with click handlers
+                return True
+
+        return False
 
     def _toggle_maximize(self):
         if self.isMaximized():
@@ -632,6 +680,7 @@ class MainWindow(QMainWindow):
         scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         scroll.setFrameShape(QFrame.NoFrame)
         self.tag_flow_widget = QWidget()
+        self.tag_flow_widget.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
         self.tag_flow = QVBoxLayout(self.tag_flow_widget)
         self.tag_flow.setContentsMargins(0, 0, 0, 0)
         self.tag_flow.setSpacing(4)
@@ -655,10 +704,15 @@ class MainWindow(QMainWindow):
             chip.setCheckable(True)
             chip.setCursor(Qt.PointingHandCursor)
             chip.setFixedHeight(26)
+            chip.setEnabled(True)          # ensure interactive
+            chip.setFocusPolicy(Qt.NoFocus) # prevent focus stealing from grid
             if tooltip:
                 chip.setToolTip(tooltip)
             chip.setChecked(self._current_view == view_key)
-            chip.clicked.connect(lambda _c, k=view_key: self._set_view(k))
+            # Use a closure that captures view_key at definition time to avoid
+            # late-binding issues in loops. The _c param receives the checked
+            # state bool from the checkable button's clicked(bool) signal.
+            chip.clicked.connect(lambda _checked, k=view_key: self._set_view(k))
             return chip
 
         # --- Smart-filter chips: thumbnails / favorites ---
@@ -701,9 +755,11 @@ class MainWindow(QMainWindow):
             chip.setCheckable(True)
             chip.setCursor(Qt.PointingHandCursor)
             chip.setFixedHeight(26)
+            chip.setEnabled(True)          # ensure interactive
+            chip.setFocusPolicy(Qt.NoFocus) # prevent focus stealing from grid
             chip.setToolTip("%s · %d %s" % (tag, count, tr("tag_count_suffix")))
             chip.setChecked(self._active_tag == tag)
-            chip.clicked.connect(lambda _c, t=tag: self._set_tag_filter(t))
+            chip.clicked.connect(lambda _checked, t=tag: self._set_tag_filter(t))
             self.tag_flow.addWidget(chip)
         self.tag_clear_btn.setVisible(bool(self._active_tag))
 

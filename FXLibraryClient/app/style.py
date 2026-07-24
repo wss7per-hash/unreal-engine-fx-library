@@ -791,40 +791,38 @@ QFrame#sep {{
     max-width: 1px;
     min-width: 1px;
 }}
-/* Sidebar brand/stat hero card — soft translucent indigo→cyan glow
-   (the "Stripe 柔光概念" signature element). Uses semi-transparent stops
-   so the underlying panel texture bleeds through, giving a luminous
-   depth that solid gradients can't achieve. */
+/* Sidebar brand/stat hero card — clean flat design with subtle accent
+   border. Replaces the previous heavy gradient glow which looked gaudy and
+   uncoordinated against the dark theme. */
 QFrame#sidehero {{
-    background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
-        stop:0 rgba(99,91,255,0.35), stop:1 rgba(0,163,255,0.20));
+    background: {bg2};
+    border: 1px solid {border};
     border-radius: {{r_lg}};
-    border: 1px solid rgba(99,91,255,0.25);
 }}
 QLabel#heromono {{
-    color: #ffffff;
-    background: rgba(255,255,255,0.18);
+    color: {accent};
+    background: {accent_tint};
     border-radius: {{r_sm}};
     font-size: 14px;
     font-weight: 800;
     padding: 2px 8px;
 }}
 QLabel#herolib {{
-    color: rgba(255,255,255,0.92);
+    color: {text};
     font-size: 12px;
     font-weight: 600;
 }}
 QLabel#herostat {{
-    color: #ffffff;
+    color: {text};
     font-size: 28px;
     font-weight: 800;
 }}
 QLabel#herosuB {{
-    color: rgba(255,255,255,0.82);
+    color: {muted};
     font-size: 12px;
 }}
 QLabel#herometa {{
-    color: rgba(255,255,255,0.72);
+    color: {muted2};
     font-size: 11px;
 }}
 """
