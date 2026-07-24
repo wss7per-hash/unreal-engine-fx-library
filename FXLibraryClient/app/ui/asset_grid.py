@@ -679,7 +679,18 @@ class AssetGrid(QScrollArea):
         return len(self.assets)
 
     def _clear_live(self):
+        # Synchronous removal: deleteLater() is ASYNCHRONOUS — it only marks
+        # widgets for deletion when control returns to the event loop.  If
+        # _refill_window() runs immediately after (as it does in set_assets),
+        # the old cards are still in the widget tree and paint ON TOP of the
+        # newly created cards, making the grid appear "stale" until the user
+        # interacts with another widget (e.g. a toolbar combo) that lets the
+        # event loop process pending deletions.
+        # Fix: unparent synchronously so old cards vanish instantly, then
+        # schedule C++ cleanup for later.
         for c in self._live.values():
+            c.hide()
+            c.setParent(None)
             c.deleteLater()
         self._live = {}
 
@@ -737,6 +748,10 @@ class AssetGrid(QScrollArea):
         if self._anchor_index >= len(self.assets):
             self._anchor_index = -1
         self._relayout()
+        # Force an immediate repaint so the grid reflects the new assets
+        # right away instead of waiting for the next event-loop cycle
+        # (which may not arrive until the user clicks elsewhere).
+        self.viewport().update()
 
     def _cols(self):
         if self.view_mode == "list":
