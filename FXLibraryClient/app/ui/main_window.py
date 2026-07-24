@@ -527,7 +527,6 @@ class MainWindow(QMainWindow):
             "has_thumb": self.nav_thumb,
             "no_thumb": self.nav_nothumb,
             "fav": self.nav_fav,
-            "no_tag": self.nav_notag,
         }
         self._sync_nav()
         self._refresh_sidebar_stats()
@@ -652,11 +651,6 @@ class MainWindow(QMainWindow):
         self.nav_nothumb = _make_chip(tr("no_thumb"), "no_thumb", "no_thumb")
         self.nav_fav = _make_chip(tr("favorites"), "fav", "fav")
 
-        notag_count = self.db.untagged_count()
-        self.nav_notag = _make_chip(
-            tr("no_tag"), "tag", "no_tag",
-            "%s · %d %s" % (tr("no_tag"), notag_count, tr("tag_count_suffix")))
-
         # --- separator ---
         sep1 = QFrame()
         sep1.setObjectName("tagsep")
@@ -725,7 +719,7 @@ class MainWindow(QMainWindow):
                 chip.setChecked(t == self._active_tag)
             except Exception:
                 pass
-        for k in ("has_thumb", "no_thumb", "fav", "no_tag"):
+        for k in ("has_thumb", "no_thumb", "fav"):
             chip = getattr(self, "nav_" + k, None)
             if chip is not None:
                 try:
@@ -1842,8 +1836,6 @@ class MainWindow(QMainWindow):
             self.nav_nothumb.setText(" " + tr("no_thumb"))
         if hasattr(self, "nav_fav"):
             self.nav_fav.setText(" " + tr("favorites"))
-        if hasattr(self, "nav_notag"):
-            self.nav_notag.setText(" " + tr("no_tag"))
         self.btn_add.setText(" " + tr("scan_dir"))
         if hasattr(self, "btn_read_thumbs"):
             self.btn_read_thumbs.setText(" " + tr("read_thumbs"))
@@ -2090,17 +2082,8 @@ class MainWindow(QMainWindow):
                 self._show_empty_inspector()
             return
 
-        # Untagged view: assets with empty tags
-        if self._current_view == "no_tag":
-            filtered = [a for a in self._all_assets if not (a.tags or "").strip()]
-            filtered = self._apply_grid_filters(filtered, q, t, src)
-            self._apply_sort(filtered, sort)
-            self.grid.set_assets(filtered)
-            self._populate_details(filtered)
-            self._update_section_head(filtered)
-            return
 
-        # Uncategorized view: assets with no type or unknown
+ # Uncategorized view: assets with no type or unknown
         if self._current_view == "uncategorized":
             filtered = [a for a in self._all_assets
                         if not a.type or a.type in ("Unknown", "")]
@@ -2281,7 +2264,7 @@ class MainWindow(QMainWindow):
         title_map = {
             "all": "all_fx", "fav": "favorites",
             "trash": "trash", "uncategorized": "uncategorized",
-            "no_tag": "no_tag", "recent": "recent",
+            "recent": "recent",
             "has_thumb": "has_thumb", "no_thumb": "no_thumb",
         }
         key = title_map.get(self._current_view, "all_fx")
