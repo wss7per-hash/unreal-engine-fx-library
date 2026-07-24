@@ -308,6 +308,9 @@ TRANSLATIONS = {
         "gen_thumb_result_fail": "成功 {avail}/{total} 个；失败 {failed} 个。\n\n常见原因：工程过大/未编译 shader/资源依赖缺失。\n\n最后 UE 日志：\n{log}",
         "dont_show_again": "不再显示完成提示",
         "close": "关闭",
+        "minimize": "最小化",
+        "maximize": "最大化",
+        "restore": "向下还原",
         "need_ue_for_thumb": "未检测到 Unreal Editor，无法生成真实播放缩略图。请在「设置」中配置 UE 路径。",
         "asset_not_in_project": "所选特效不在任何 UE 项目内，无法生成播放缩略图。",
         # Theme
@@ -636,6 +639,9 @@ TRANSLATIONS = {
         "gen_thumb_result_fail": "{avail}/{total} succeeded; {failed} failed.\n\nCommon causes: large project / uncompiled shaders / missing asset dependencies.\n\nLast UE log:\n{log}",
         "dont_show_again": "Don't show completion messages again",
         "close": "Close",
+        "minimize": "Minimize",
+        "maximize": "Maximize",
+        "restore": "Restore",
         "need_ue_for_thumb": "No Unreal Editor detected; cannot generate real playing thumbnails. Set the UE path in Settings.",
         "asset_not_in_project": "The selected FX is not inside any UE project; cannot generate a playing thumbnail.",
         # Theme

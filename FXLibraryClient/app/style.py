@@ -715,6 +715,38 @@ QPushButton#batchbtn {{
 QPushButton#batchbtn:hover {{ background: {panel2}; border-color: {accent}; }}
 QPushButton#batchbtn:pressed {{ background: {card_sel}; }}
 
+/* ---------- Custom title bar (frameless window) ---------- */
+QFrame#titlebar {{
+    background: {bg};
+    border-bottom: 1px solid {border};
+}}
+QLabel#titletext {{
+    color: {text};
+    font-size: 12px;
+    font-weight: 600;
+}}
+QPushButton#winctl {{
+    background: transparent;
+    color: {muted};
+    border: none;
+    border-radius: {{r_sm}};
+    font-size: 13px;
+    padding: 4px;
+}}
+QPushButton#winctl:hover {{ background: {panel2}; color: {text}; }}
+QPushButton#winctl:pressed {{ background: {border}; }}
+QPushButton#winclose {{
+    background: transparent;
+    color: {muted};
+    border: none;
+    border-radius: {{r_sm}};
+    font-size: 14px;
+    font-weight: 700;
+    padding: 4px;
+}}
+QPushButton#winclose:hover {{ background: #e25950; color: #ffffff; }}
+QPushButton#winclose:pressed {{ background: #c03530; color: #ffffff; }}
+
 QFrame#header {{
     background: {bg};
     border-bottom: 1px solid {border};
