@@ -30,7 +30,7 @@ from PySide6.QtGui import (QPixmap, QIcon, QImage, QColor, QPainter, QFont,
 from app import config as cfg, ue_bridge
 from app import uasset_thumb
 from app.database import Database
-from app.models import FXAsset, FxPackEntry, TYPE_NIAGARA, TYPE_CASCADE, TYPE_UNKNOWN
+from app.models import FXAsset, FxPackEntry, TYPE_NIAGARA, TYPE_CASCADE
 from app.workers import BridgeWorker
 from app.scanner import ScannerWorker
 from app import ue_export
@@ -426,22 +426,28 @@ class MainWindow(QMainWindow):
         nav_layout.setContentsMargins(0, 0, 0, 0)
         nav_layout.setSpacing(6)
 
-        # Quick-filter shortcuts: thumbnails + favorites.
-        # (Tag-related filters live in the tag browser section below.)
+        # Quick-filter shortcuts: thumbnails, untagged, favorites.
+        # (User tags live in the tag browser section below, as a parallel peer.)
         # Thumbnail filters: assets with a REAL embedded thumbnail vs those
         # that only show a generated placeholder.
         self.nav_thumb = self._nav_btn(tr("has_thumb"), "thumbnail",
                                        lambda: self._set_view("has_thumb"))
         self.nav_nothumb = self._nav_btn(tr("no_thumb"), "no_thumb",
                                          lambda: self._set_view("no_thumb"))
+        # Untagged — parallel PEER to the "标签" section below (same _nav_btn
+        # style as 收藏 / 缩略图), NOT nested inside it.
+        self.nav_notag = self._nav_btn(tr("no_tag"), "no_tag",
+                                       lambda: self._set_view("no_tag"))
+        self.nav_notag.setToolTip("%s · %d %s" % (
+            tr("no_tag"), self.db.untagged_count(), tr("tag_count_suffix")))
         # Favorites — quick access to starred assets
         self.nav_fav = self._nav_btn(tr("favorites"), "fav",
                                       lambda: self._set_view("fav"))
         nav_layout.addWidget(self.nav_thumb)
         nav_layout.addWidget(self.nav_nothumb)
         nav_layout.addSpacing(6)
-        # Favorites section
-        nav_layout.addWidget(self._nav_title(tr("favorites")))
+        nav_layout.addWidget(self.nav_notag)
+        nav_layout.addSpacing(6)
         nav_layout.addWidget(self.nav_fav)
         # Add the CONTAINER widget to the tree (not its layout). Using
         # addLayout(nav_layout) here would reparent the layout onto `frame`
@@ -492,6 +498,7 @@ class MainWindow(QMainWindow):
             "trash": self.nav_trash,
             "has_thumb": self.nav_thumb,
             "no_thumb": self.nav_nothumb,
+            "no_tag": self.nav_notag,
             "fav": self.nav_fav,
         }
         self._sync_nav()
@@ -547,26 +554,8 @@ class MainWindow(QMainWindow):
             return
         self._clear_layout(self.tag_flow)
 
-        # --- "Untagged" pseudo-tag chip (first item, consistent style) ---
-        untagged_cnt = self.db.untagged_count()
-        no_tag_chip = QPushButton(tr("no_tag"))
-        no_tag_chip.setObjectName("tagchipbar")
-        no_tag_chip.setCursor(Qt.PointingHandCursor)
-        no_tag_chip.setFixedHeight(26)
-        no_tag_chip.setToolTip("%s · %d %s" % (tr("no_tag"), untagged_cnt, tr("tag_count_suffix")))
-        no_tag_chip.setChecked(self._current_view == "no_tag")
-        no_tag_chip.clicked.connect(lambda: self._set_view("no_tag"))
-        self.tag_flow.addWidget(no_tag_chip)
-        self._no_tag_chip = no_tag_chip  # keep ref for sync
-
-        # Thin separator between untagged and real tags
-        sep = QFrame()
-        sep.setFrameShape(QFrame.HLine)
-        sep.setFixedHeight(1)
-        sep.setObjectName("tagsep")
-        self.tag_flow.addWidget(sep)
-
-        # --- Real tag chips ---
+        # --- Real tag chips (the "未标签" pseudo-filter lives as a
+        #     parallel _nav_btn above, next to 收藏 / 缩略图) ---
         tags = self.db.all_tags_with_counts()
         if not tags:
             hint = QLabel(tr("no_tags_hint"))
@@ -605,10 +594,9 @@ class MainWindow(QMainWindow):
         assets = list(getattr(self, "_all_assets", []) or [])
         total = len(assets)
         fav = sum(1 for a in assets if getattr(a, "favorite", False))
-        uncat = sum(1 for a in assets if a.type == TYPE_UNKNOWN)
         self.hero_stat.setText(str(total))
         self.hero_sub.setText(tr("hero_assets"))
-        self.hero_meta.setText("★ %d  ·  %s %d" % (fav, tr("uncategorized"), uncat))
+        self.hero_meta.setText("★ %d" % fav)
 
     def _show_library_menu(self):
         """Eagle-style: clicking the library name shows a small menu
@@ -808,9 +796,6 @@ class MainWindow(QMainWindow):
         for k, btn in getattr(self, "view_seg_btns", {}).items():
             btn.setChecked(k == self._current_view and not in_folder
                            and not in_cat)
-        # Sync the "no_tag" pseudo-tag chip in the tag browser
-        if getattr(self, "_no_tag_chip", None):
-            self._no_tag_chip.setChecked(self._current_view == "no_tag")
 
     def _build_folder_tree(self):
         from app.style import THEMES

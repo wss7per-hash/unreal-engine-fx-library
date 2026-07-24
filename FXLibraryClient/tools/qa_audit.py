@@ -1288,19 +1288,20 @@ try:
 
     # ROUND-9: Tag-related sidebar organization
     #   "Uncategorized" was removed (dead filter — scanner always assigns type).
-    #   "No-Tag" (未标签) lives inside the tag browser as a #tagchipbar chip
-    #   (_no_tag_chip), NOT as a standalone nav_btn.  It must be reachable via
-    #   _set_view("no_tag") and visually consistent with real tag chips.
-    has_no_tag_chip = ('_no_tag_chip' in mw_src
-                       and 'tr("no_tag")' in mw_src
-                       and '_set_view("no_tag")' in mw_src)
+    #   "No-Tag" (未标签) is a PARALLEL _nav_btn peer to the 标签 section
+    #   (same style as 收藏 / 缩略图), NOT nested inside the tag browser.
+    #   It must be a real sidebar entry wired to _set_view("no_tag").
+    has_no_tag_nav = ('self.nav_notag' in mw_src
+                       and '_nav_btn(tr("no_tag")' in mw_src
+                       and '_set_view("no_tag")' in mw_src
+                       and '"no_tag": self.nav_notag' in mw_src)
     has_uncat_removed = ('self.nav_uncat' not in mw_src)
-    if has_no_tag_chip and has_uncat_removed:
+    if has_no_tag_nav and has_uncat_removed:
         ok("uncat_notag_reachable",
-           "No-Tag inside tag browser (#tagchipbar); Uncategorized removed")
+           "No-Tag is parallel _nav_btn peer to 标签; Uncategorized removed")
     else:
         bad("uncat_notag_reachable",
-            "No-Tag not in tag browser or Uncategorized still present")
+             "No-Tag not a parallel nav entry or Uncategorized still present")
 
     # ROUND-11: Windows-style 3 view modes (icons / list / details table)
     if 'self.view_combo' in mw_src and '("icons", tr("vm_icons"))' in mw_src \
