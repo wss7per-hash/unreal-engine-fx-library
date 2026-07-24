@@ -54,6 +54,7 @@ QWidget {{
     font-family: "Segoe UI", "Microsoft YaHei UI", sans-serif;
     font-size: 13px;
     color: {text};
+    background: {bg};
 }}
 /* keyboard focus visibility (accessibility) */
 QPushButton:focus, QPushButton#icon:focus, QPushButton#lang:focus,
@@ -209,9 +210,9 @@ QPushButton#lang {{
 QPushButton#lang:hover {{ background: {panel2}; border: 1px solid {border2}; }}
 
 QPushButton#nav {{
-    background: transparent;
+    background: {bg2};
     color: {muted};
-    border: 1px solid transparent;
+    border: 1px solid {border};
     border-radius: {{r_md}};
     padding: 5px 10px;
     font-size: 12.5px;
@@ -222,7 +223,7 @@ QPushButton#nav {{
 QPushButton#nav:hover {{
     background: {panel2};
     color: {text};
-    border-color: {border};
+    border-color: {accent};
 }}
 QPushButton#nav:checked {{
     /* Soft indigo→cyan gradient selected state with left accent rail. */
@@ -287,6 +288,11 @@ QFrame#tagsep {{
 }}
 
 QScrollArea#tagscroll {{
+    background: transparent;
+    border: none;
+}}
+
+QFrame#tagbrowser {{
     background: transparent;
     border: none;
 }}
@@ -716,7 +722,7 @@ QFrame#header {{
 QFrame#header #brand {{ color: {text}; font-weight: 700; font-size: 14px; }}
 
 QFrame#toolbar {{
-    background: {bg2};
+    background: {bg};
     border-bottom: 1px solid {border};
 }}
 QFrame#segctl {{
