@@ -748,10 +748,14 @@ class AssetGrid(QScrollArea):
         if self._anchor_index >= len(self.assets):
             self._anchor_index = -1
         self._relayout()
-        # Force an immediate repaint so the grid reflects the new assets
-        # right away instead of waiting for the next event-loop cycle
-        # (which may not arrive until the user clicks elsewhere).
-        self.viewport().update()
+        # Synchronous repaint.  update() alone is asynchronous and can be
+        # swallowed when set_assets() runs right after a batch of sidebar
+        # widget rebuilds (setParent/deleteLater/layout in _refresh_tag_browser),
+        # which is exactly why the grid looked "stale" until the user
+        # clicked a toolbar widget and the event loop finally painted it.
+        # repaint() forces the paint *now* so the filtered grid shows
+        # immediately after a tag/folder click.
+        self.viewport().repaint()
 
     def _cols(self):
         if self.view_mode == "list":

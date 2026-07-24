@@ -707,7 +707,13 @@ class MainWindow(QMainWindow):
         self.folder_tree.clearSelection()
         self._sync_nav()
         self._refresh_tag_browser()
-        self._apply_filters()
+        # Defer the grid refresh to the next frame. Rebuilding the whole
+        # sidebar above (setParent/deleteLater + layout) disturbs Qt's paint
+        # scheduling, so an immediate _apply_filters() schedules a paint
+        # that never fires until another widget is clicked. singleShot(0)
+        # runs _apply_filters() after the rebuild settles, so the filtered
+        # grid repaints right away.
+        QTimer.singleShot(0, self._apply_filters)
 
     def _refresh_sidebar_stats(self):
         """Keep the brand/stat hero card in sync with the loaded library."""
@@ -825,7 +831,8 @@ class MainWindow(QMainWindow):
         self._active_tag = None
         self._sync_nav()
         self._refresh_tag_browser()
-        self._apply_filters()
+        # Defer grid refresh (see _set_tag_filter for why).
+        QTimer.singleShot(0, self._apply_filters)
 
     def _deselect_folder(self):
         """Clear folder selection and return to the All view."""
@@ -839,7 +846,8 @@ class MainWindow(QMainWindow):
         self._active_tag = None
         self._sync_nav()
         self._refresh_tag_browser()
-        self._apply_filters()
+        # Defer grid refresh (see _set_tag_filter for why).
+        QTimer.singleShot(0, self._apply_filters)
 
     def _on_folder_tree_context(self, pos):
         item = self.folder_tree.itemAt(pos)
@@ -1987,7 +1995,8 @@ class MainWindow(QMainWindow):
         self.folder_tree.clearSelection()
         self._sync_nav()
         self._refresh_tag_browser()
-        self._apply_filters()
+        # Defer grid refresh (see _set_tag_filter for why).
+        QTimer.singleShot(0, self._apply_filters)
         # Update batch bar for trash view
         self._on_selection_changed(len(self.grid._selected))
 
@@ -2002,7 +2011,8 @@ class MainWindow(QMainWindow):
         self.folder_tree.clearSelection()
         self._sync_nav()
         self._refresh_tag_browser()
-        self._apply_filters()
+        # Defer grid refresh (see _set_tag_filter for why).
+        QTimer.singleShot(0, self._apply_filters)
 
     @staticmethod
     def _set_combo_by_data(combo, data):
@@ -2504,7 +2514,8 @@ class MainWindow(QMainWindow):
             self.insp_tag_input.clear()
             self._show_inspector(self._current_asset)
             self._refresh_tag_browser()
-            self._apply_filters()
+            # Defer grid refresh (see _set_tag_filter for why).
+            QTimer.singleShot(0, self._apply_filters)
 
     def _remove_tag(self, tag):
         if not self._current_asset:
@@ -2515,7 +2526,8 @@ class MainWindow(QMainWindow):
         self.db.set_tags(self._current_asset.source_path, self._current_asset.tags)
         self._show_inspector(self._current_asset)
         self._refresh_tag_browser()
-        self._apply_filters()
+        # Defer grid refresh (see _set_tag_filter for why).
+        QTimer.singleShot(0, self._apply_filters)
 
     def _on_note_changed(self):
         if not self._current_asset:
