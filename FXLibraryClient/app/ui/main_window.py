@@ -141,19 +141,19 @@ class LightboxDialog(QDialog):
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        # Frameless window — removes the native Windows white title bar.
-        # We draw our own dark title bar inside the UI so it matches the theme.
-        self.setWindowFlags(Qt.FramelessWindowHint)
-        self.setAttribute(Qt.WA_TranslucentBackground, False)
+        # Use the NATIVE window chrome (title bar / borders / resize grips).
+        # The previous FramelessWindowHint + custom drag/resize logic was the
+        # root cause of the filter/tag/folder click failures: intercepting
+        # mouse events on the QMainWindow to fake drag/resize kept stealing
+        # clicks from child widgets. Going native means the OS handles
+        # move/resize flawlessly and NO click can ever be swallowed.
+        # We only darken the native title bar via the Windows DWM API so it
+        # still matches the dark theme (see _apply_dark_title_bar).
         self.setWindowTitle(tr("app_title"))
         self.setWindowIcon(app_icon())
         self.resize(1440, 900)
         self.setMinimumSize(1100, 700)
         self.setAcceptDrops(True)
-
-        # For drag-to-move of the frameless window
-        self._drag_pos = None
-        self._resize_edge = None
 
         self.cfg = cfg.load()
         self.theme = "dark"  # dark-only: no light/theme toggle
@@ -184,6 +184,7 @@ class MainWindow(QMainWindow):
 
         self._build_ui()
         self._install_shortcuts()
+        self._apply_dark_title_bar()  # native title bar -> dark (no-op off Windows)
         self._apply_theme(self.theme, save=False)
         self._refresh_ue_state()
         self._set_busy(False)
@@ -250,180 +251,6 @@ class MainWindow(QMainWindow):
         self.log.append(tr("drop_import", n=len(roots)))
         self._run_scan(roots, mode)
 
-    # ---------- frameless window: drag-to-move + edge resize ----------
-    # Edge margin (pixels) for resize detection
-    _EDGE_MARGIN = 6
-
-    def _get_edge_at(self, pos):
-        """Return the Qt.Edge(s) at the given window-local position, or None."""
-        g = self.geometry()
-        left = pos.x() <= self._EDGE_MARGIN
-        right = pos.x() >= g.width() - self._EDGE_MARGIN
-        top = pos.y() <= self._EDGE_MARGIN
-        bottom = pos.y() >= g.height() - self._EDGE_MARGIN
-        if left and top:
-            return Qt.TopLeftEdge
-        if right and top:
-            return Qt.TopRightEdge
-        if left and bottom:
-            return Qt.BottomLeftEdge
-        if right and bottom:
-            return Qt.BottomRightEdge
-        if left:
-            return Qt.LeftEdge
-        if right:
-            return Qt.RightEdge
-        if top:
-            return Qt.TopEdge
-        if bottom:
-            return Qt.BottomEdge
-        return None
-
-    def _cursor_for_edge(self, edge):
-        shapes = {
-            Qt.LeftEdge: Qt.SizeHorCursor,
-            Qt.RightEdge: Qt.SizeHorCursor,
-            Qt.TopEdge: Qt.SizeVerCursor,
-            Qt.BottomEdge: Qt.SizeVerCursor,
-            Qt.TopLeftCorner: Qt.SizeFDiagCursor,
-            Qt.TopRightCorner: Qt.SizeBDiagCursor,
-            Qt.BottomLeftCorner: Qt.SizeBDiagCursor,
-            Qt.BottomRightCorner: Qt.SizeFDiagCursor,
-        }
-        return shapes.get(edge, Qt.ArrowCursor)
-
-    def mousePressEvent(self, e):
-        if e.button() == Qt.LeftButton:
-            pos = e.position().toPoint()
-            # Check for edge resize first
-            edge = self._get_edge_at(pos)
-            if edge is not None:
-                self._resize_edge = edge
-                self._drag_geo = self.geometry()
-                self._drag_pos = e.globalPosition().toPoint()
-                return
-            # Drag-to-move is ONLY allowed from the custom title bar or the
-            # passive sidebar background frames.  Interactive controls (tag chips,
-            # filter combos, the folder tree, grid cards, etc.) must keep
-            # their clicks — so we never start a drag from them.
-            if self._drag_allowed_at(pos):
-                self._drag_pos = e.globalPosition().toPoint() - self.frameGeometry().topLeft()
-                return
-        super().mousePressEvent(e)
-
-    def mouseMoveEvent(self, e):
-        pos = e.position().toPoint()
-        # Update cursor when hovering over edges (no button pressed)
-        if not (e.buttons() & Qt.LeftButton):
-            edge = self._get_edge_at(pos)
-            if edge is not None:
-                self.setCursor(self._cursor_for_edge(edge))
-            else:
-                self.setCursor(Qt.ArrowCursor)
-        # Handle dragging
-        if self._drag_pos is not None and e.buttons() & Qt.LeftButton:
-            if hasattr(self, '_resize_edge') and self._resize_edge is not None:
-                self._handle_resize(e.globalPosition().toPoint())
-            else:
-                self.move(e.globalPosition().toPoint() - self._drag_pos)
-        super().mouseMoveEvent(e)
-
-    def mouseReleaseEvent(self, e):
-        if e.button() == Qt.LeftButton:
-            self._drag_pos = None
-            self._resize_edge = getattr(self, '_resize_edge', None)
-            if hasattr(self, '_resize_edge'):
-                self._resize_edge = None
-        super().mouseReleaseEvent(e)
-
-    def _handle_resize(self, global_pos):
-        """Resize window based on which edge is being dragged."""
-        geo = self.geometry()
-        dx = global_pos.x() - self._drag_pos.x()
-        dy = global_pos.y() - self._drag_pos.y()
-        edge = self._resize_edge
-        min_w = self.minimumWidth()
-        min_h = self.minimumHeight()
-
-        if edge in (Qt.LeftEdge, Qt.TopLeftEdge, Qt.BottomLeftEdge):
-            new_x = geo.x() + dx
-            new_w = geo.width() - dx
-            if new_w >= min_w:
-                geo.setX(new_x)
-                geo.setWidth(new_w)
-            else:
-                geo.setX(geo.right() - min_w)
-                geo.setWidth(min_w)
-
-        if edge in (Qt.RightEdge, Qt.TopRightEdge, Qt.BottomRightEdge):
-            geo.setWidth(max(min_w, geo.width() + dx))
-
-        if edge in (Qt.TopEdge, Qt.TopLeftEdge, Qt.TopRightEdge):
-            new_y = geo.y() + dy
-            new_h = geo.height() - dy
-            if new_h >= min_h:
-                geo.setY(new_y)
-                geo.setHeight(new_h)
-            else:
-                geo.setY(geo.bottom() - min_h)
-                geo.setHeight(min_h)
-
-        if edge in (Qt.BottomEdge, Qt.BottomLeftEdge, Qt.BottomRightEdge):
-            geo.setHeight(max(min_h, geo.height() + dy))
-
-        self.setGeometry(geo)
-        self._drag_pos = global_pos
-
-    def _is_in_title_bar(self, pos):
-        """True only when `pos` (window-local) is inside the custom title bar."""
-        if not hasattr(self, 'title_bar'):
-            return False
-        tb = self.title_bar
-        gp = tb.mapToGlobal(QPoint(0, 0))
-        r = QRect(gp.x(), gp.y(), tb.width(), tb.height())
-        return r.contains(self.mapToGlobal(pos))
-
-    # Widget types that must keep their own mouse clicks (never start a drag).
-    _INTERACTIVE = (QPushButton, QComboBox, QLineEdit, QAbstractItemView,
-                     QTreeWidget, QCheckBox, QListView, QDialogButtonBox)
-
-    def _drag_allowed_at(self, pos):
-        """Decide whether a left-press at `pos` may begin a window drag.
-
-        Allowed ONLY from:
-          * the custom title bar, OR
-          * the passive sidebar background frames (sidebar / tagbrowser / folderframe)
-
-        Everything else — tag chips, filter combos, the folder tree, grid
-        cards, search box, buttons — keeps its click.  This is what was
-        missing before: the old code treated generic background containers as
-        draggable and `childAt()` would resolve to the container *behind* a
-        chip, silently eating the click and breaking filtering/tag/folder.
-        """
-        # 1) Title bar is always draggable.
-        if self._is_in_title_bar(pos):
-            return True
-        # 2) Otherwise only the passive sidebar frames may drag.
-        child = self.childAt(pos)
-        if child is None:
-            return False
-        if isinstance(child, MainWindow._INTERACTIVE):
-            return False
-        # The hero card has its own click handler (go to "All"); keep it.
-        if child.objectName() in ("sidebar", "tagbrowser", "folderframe"):
-            return True
-        return False
-
-    def _toggle_maximize(self):
-        if self.isMaximized():
-            self.showNormal()
-            self.btn_max.setText("□")
-            self.btn_max.setToolTip(tr("maximize"))
-        else:
-            self.showMaximized()
-            self.btn_max.setText("❐")
-            self.btn_max.setToolTip(tr("restore"))
-
     # ---------- setup ----------
     def _build_ui(self):
         QApplication.instance().setStyleSheet(get_stylesheet(self.theme))
@@ -433,47 +260,11 @@ class MainWindow(QMainWindow):
         vmain.setContentsMargins(0, 0, 0, 0)
         vmain.setSpacing(0)
 
-        # ---- Custom dark title bar (replaces native Windows white title bar) ----
-        title_bar = QFrame()
-        title_bar.setObjectName("titlebar")
-        title_bar.setFixedHeight(34)
-        title_layout = QHBoxLayout(title_bar)
-        title_layout.setContentsMargins(12, 0, 8, 0)
-        title_layout.setSpacing(8)
-
-        # App icon + title
-        icon_lbl = QLabel()
-        icon_lbl.setPixmap(app_icon().pixmap(16, 16))
-        title_layout.addWidget(icon_lbl)
-        title_text = QLabel(tr("app_title"))
-        title_text.setObjectName("titletext")
-        title_layout.addWidget(title_text)
-        title_layout.addStretch(1)
-
-        # Window controls: minimize, maximize, close
-        btn_min = QPushButton("─")
-        btn_min.setObjectName("winctl")
-        btn_min.setFixedSize(40, 28)
-        btn_min.setToolTip(tr("minimize"))
-        btn_min.clicked.connect(self.showMinimized)
-
-        self.btn_max = QPushButton("□")
-        self.btn_max.setObjectName("winctl")
-        self.btn_max.setFixedSize(40, 28)
-        self.btn_max.setToolTip(tr("maximize"))
-        self.btn_max.clicked.connect(self._toggle_maximize)
-
-        btn_close = QPushButton("×")
-        btn_close.setObjectName("winclose")
-        btn_close.setFixedSize(40, 28)
-        btn_close.setToolTip(tr("close"))
-        btn_close.clicked.connect(self.close)
-
-        for b in (btn_min, self.btn_max, btn_close):
-            title_layout.addWidget(b)
-
-        self.title_bar = title_bar
-        vmain.addWidget(title_bar)
+        # The window now uses the NATIVE title bar (which we darken via the
+        # Windows DWM API in _apply_dark_title_bar).  No custom title widget
+        # means the toolbar below is the first visible row — and, crucially,
+        # move/resize are handled by Windows itself, so mouse clicks on the
+        # filter combo, tag chips and folder tree are never intercepted.
 
         # ---- body columns (no top header — search/settings live in toolbar) ----
         self.splitter = QSplitter(Qt.Horizontal)
@@ -515,6 +306,41 @@ class MainWindow(QMainWindow):
         self._apply_soft_shadow(self.toolbar, blur=10, y_off=2, alpha=25)
         self._apply_soft_shadow(self.sidebar_frame, blur=12, y_off=0, alpha=18)
         self._apply_soft_shadow(self.inspector, blur=14, y_off=0, alpha=22)
+
+    # ---------- native title bar: darken via Windows DWM ----------
+    def _apply_dark_title_bar(self):
+        """Paint the native title bar dark to match the app theme.
+
+        We use FramelessWindowHint's opposite: a normal window with the
+        OS chrome, then ask DWM (Desktop Window Manager) to render its
+        title bar in dark mode.  This is the correct, robust fix for the
+        old white-title-bar complaint — and, unlike a custom frameless
+        title bar, it never interferes with child-widget mouse events.
+        """
+        try:
+            import ctypes
+            from ctypes import c_int, byref, sizeof
+            hwnd = int(self.winId())
+        except Exception:
+            return
+        try:
+            dwm = ctypes.windll.dwmapi
+        except Exception:
+            return
+        # 20 = DWMWA_USE_IMMERSIVE_DARK_MODE (Win10 1809+)
+        # 38 = Win11 dark-title-bar attribute (same effect, newer builds)
+        value = c_int(1)
+        for attr in (20, 38):
+            try:
+                dwm.DwmSetWindowAttribute(
+                    hwnd, attr, byref(value), sizeof(value))
+            except Exception:
+                pass
+
+    def showEvent(self, e):
+        """Once the native window exists, ask DWM to darken its title bar."""
+        super().showEvent(e)
+        self._apply_dark_title_bar()
 
     def _build_sidebar(self):
         from app.style import THEMES
