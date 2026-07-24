@@ -423,6 +423,13 @@ class Database:
                     counts[part] = counts.get(part, 0) + 1
         return sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
 
+    def untagged_count(self) -> int:
+        """Return number of assets with no tags (empty or whitespace-only)."""
+        cur = self.conn.execute(
+            "SELECT COUNT(*) FROM fx_assets "
+            "WHERE tags IS NULL OR tags = '' OR trim(tags) = ''")
+        return cur.fetchone()[0] or 0
+
     def rename_tag(self, old: str, new: str):
         """Rename a tag everywhere it appears in asset tags."""
         old = (old or "").strip()

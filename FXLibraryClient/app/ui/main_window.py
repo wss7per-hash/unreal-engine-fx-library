@@ -426,13 +426,8 @@ class MainWindow(QMainWindow):
         nav_layout.setContentsMargins(0, 0, 0, 0)
         nav_layout.setSpacing(6)
 
-        # The sidebar shows quick-filter shortcuts (Uncategorized / No Tag —
-        # preserved per the "keep" request), the folder tree, and Trash
-        # (Eagle-style). Per-asset tag editing lives in the inspector.
-        self.nav_uncat = self._nav_btn(tr("uncategorized"), "uncategorized",
-                                       lambda: self._set_view("uncategorized"))
-        self.nav_notag = self._nav_btn(tr("no_tag"), "no_tag",
-                                       lambda: self._set_view("no_tag"))
+        # Quick-filter shortcuts: thumbnails + favorites.
+        # (Tag-related filters live in the tag browser section below.)
         # Thumbnail filters: assets with a REAL embedded thumbnail vs those
         # that only show a generated placeholder.
         self.nav_thumb = self._nav_btn(tr("has_thumb"), "thumbnail",
@@ -442,10 +437,6 @@ class MainWindow(QMainWindow):
         # Favorites — quick access to starred assets
         self.nav_fav = self._nav_btn(tr("favorites"), "fav",
                                       lambda: self._set_view("fav"))
-        nav_layout.addWidget(self.nav_uncat)
-        nav_layout.addWidget(self.nav_notag)
-        nav_layout.addSpacing(6)
-        nav_layout.addWidget(self._nav_title(tr("thumbs")))
         nav_layout.addWidget(self.nav_thumb)
         nav_layout.addWidget(self.nav_nothumb)
         nav_layout.addSpacing(6)
@@ -499,8 +490,6 @@ class MainWindow(QMainWindow):
         # tag/smart-folder/management sections were removed.)
         self._nav_map = {
             "trash": self.nav_trash,
-            "uncategorized": self.nav_uncat,
-            "no_tag": self.nav_notag,
             "has_thumb": self.nav_thumb,
             "no_thumb": self.nav_nothumb,
             "fav": self.nav_fav,
@@ -557,6 +546,27 @@ class MainWindow(QMainWindow):
         if not getattr(self, "tag_flow", None):
             return
         self._clear_layout(self.tag_flow)
+
+        # --- "Untagged" pseudo-tag chip (first item, consistent style) ---
+        untagged_cnt = self.db.untagged_count()
+        no_tag_chip = QPushButton(tr("no_tag"))
+        no_tag_chip.setObjectName("tagchipbar")
+        no_tag_chip.setCursor(Qt.PointingHandCursor)
+        no_tag_chip.setFixedHeight(26)
+        no_tag_chip.setToolTip("%s · %d %s" % (tr("no_tag"), untagged_cnt, tr("tag_count_suffix")))
+        no_tag_chip.setChecked(self._current_view == "no_tag")
+        no_tag_chip.clicked.connect(lambda: self._set_view("no_tag"))
+        self.tag_flow.addWidget(no_tag_chip)
+        self._no_tag_chip = no_tag_chip  # keep ref for sync
+
+        # Thin separator between untagged and real tags
+        sep = QFrame()
+        sep.setFrameShape(QFrame.HLine)
+        sep.setFixedHeight(1)
+        sep.setObjectName("tagsep")
+        self.tag_flow.addWidget(sep)
+
+        # --- Real tag chips ---
         tags = self.db.all_tags_with_counts()
         if not tags:
             hint = QLabel(tr("no_tags_hint"))
@@ -798,6 +808,9 @@ class MainWindow(QMainWindow):
         for k, btn in getattr(self, "view_seg_btns", {}).items():
             btn.setChecked(k == self._current_view and not in_folder
                            and not in_cat)
+        # Sync the "no_tag" pseudo-tag chip in the tag browser
+        if getattr(self, "_no_tag_chip", None):
+            self._no_tag_chip.setChecked(self._current_view == "no_tag")
 
     def _build_folder_tree(self):
         from app.style import THEMES

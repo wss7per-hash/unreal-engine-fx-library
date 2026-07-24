@@ -1286,14 +1286,21 @@ try:
     else:
         bad("inspexp_tokenized", "inspector Export-to-UE button still uses inline setStyleSheet")
 
-    # ROUND-9: "Uncategorized" / "No Tag" quick filters were asked to be kept
-    # (Round-8) but lost their UI entry when the sidebar sections were removed.
-    # They must be reachable from the sidebar nav again.
-    if 'self.nav_uncat' in mw_src and '_set_view("uncategorized")' in mw_src \
-            and 'self.nav_notag' in mw_src and '_set_view("no_tag")' in mw_src:
-        ok("uncat_notag_reachable", "Uncategorized / No-Tag quick filters are back in the sidebar")
+    # ROUND-9: Tag-related sidebar organization
+    #   "Uncategorized" was removed (dead filter — scanner always assigns type).
+    #   "No-Tag" (未标签) lives inside the tag browser as a #tagchipbar chip
+    #   (_no_tag_chip), NOT as a standalone nav_btn.  It must be reachable via
+    #   _set_view("no_tag") and visually consistent with real tag chips.
+    has_no_tag_chip = ('_no_tag_chip' in mw_src
+                       and 'tr("no_tag")' in mw_src
+                       and '_set_view("no_tag")' in mw_src)
+    has_uncat_removed = ('self.nav_uncat' not in mw_src)
+    if has_no_tag_chip and has_uncat_removed:
+        ok("uncat_notag_reachable",
+           "No-Tag inside tag browser (#tagchipbar); Uncategorized removed")
     else:
-        bad("uncat_notag_reachable", "Uncategorized / No-Tag filters have no sidebar entry")
+        bad("uncat_notag_reachable",
+            "No-Tag not in tag browser or Uncategorized still present")
 
     # ROUND-11: Windows-style 3 view modes (icons / list / details table)
     if 'self.view_combo' in mw_src and '("icons", tr("vm_icons"))' in mw_src \

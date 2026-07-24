@@ -273,6 +273,12 @@ QLabel#taghint {{
     padding: 2px 4px;
 }}
 
+QFrame#tagsep {{
+    background: {border};
+    border: none;
+    max-height: 1px;
+}}
+
 QPushButton#act {{
     background: {bg2};
     color: {text};
