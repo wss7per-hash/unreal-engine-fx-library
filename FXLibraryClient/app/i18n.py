@@ -51,6 +51,7 @@ TRANSLATIONS = {
         "niagara": "Niagara 系统",
         "cascade": "Cascade 粒子",
         "tags": "标签",
+        "filters": "筛选",
         "no_tags_hint": "（暂无标签，选中资源后在右侧「标签」处添加）",
         "no_thumb": "未读取缩略图",
         # Smart folders (saved searches)
@@ -379,6 +380,7 @@ TRANSLATIONS = {
         "niagara": "Niagara System",
         "cascade": "Cascade Particle",
         "tags": "Tags",
+        "filters": "Filters",
         "no_tags_hint": "(No tags yet — select an asset and add tags on the right)",
         "no_thumb": "No thumbnail loaded",
         # Smart folders (saved searches)

@@ -251,49 +251,7 @@ class MainWindow(QMainWindow):
         vmain.setContentsMargins(0, 0, 0, 0)
         vmain.setSpacing(0)
 
-        # ---- header ----
-        header = QFrame()
-        header.setObjectName("header")
-        self.header_frame = header
-        header.setFixedHeight(44)
-        hl = QHBoxLayout(header)
-        hl.setContentsMargins(14, 0, 14, 0)
-        hl.setSpacing(12)
-
-        # brand (minimal — just title text; FX monogram lives in sidebar hero)
-        brand = QHBoxLayout()
-        brand.setSpacing(8)
-        bt = QLabel(tr("app_title"))
-        bt.setObjectName("brand")
-        brand.addWidget(bt)
-        hl.addLayout(brand)
-
-        # search
-        self.search = QLineEdit()
-        self.search.setPlaceholderText(tr("search_ph"))
-        self.search.setClearButtonEnabled(True)
-        self.search.setMaximumWidth(420)
-        self._search_timer = QTimer(self)
-        self._search_timer.setSingleShot(True)
-        self._search_timer.setInterval(250)
-        self._search_timer.timeout.connect(self._apply_filters)
-        self.search.textChanged.connect(self._on_search_changed)
-        self._round_lineedit(self.search)
-        self.search.setFixedHeight(36)
-        hl.addWidget(self.search, 1)
-
-        # right controls — settings only (language moved to Settings dialog).
-        self.btn_settings = QPushButton()
-        self.btn_settings.setObjectName("icon")
-        self.btn_settings.setIcon(icon("settings", size=18))
-        self.btn_settings.setFixedSize(36, 36)
-        self.btn_settings.clicked.connect(self._open_settings)
-        self._round_button(self.btn_settings)
-        hl.addWidget(self.btn_settings)
-
-        vmain.addWidget(header)
-
-        # ---- body columns ----
+        # ---- body columns (no top header — search/settings live in toolbar) ----
         self.splitter = QSplitter(Qt.Horizontal)
         self.splitter.setObjectName("mainsplitter")
         self.splitter.setHandleWidth(1)
@@ -330,7 +288,6 @@ class MainWindow(QMainWindow):
 
         # Panel soft shadows (Stripe 柔光 layered depth — QSS box-shadow
         # is silently ignored by Qt, so we use real graphics effects).
-        self._apply_soft_shadow(self.header_frame, blur=8, y_off=1, alpha=20)
         self._apply_soft_shadow(self.toolbar, blur=10, y_off=2, alpha=25)
         self._apply_soft_shadow(self.sidebar_frame, blur=12, y_off=0, alpha=18)
         self._apply_soft_shadow(self.inspector, blur=14, y_off=0, alpha=22)
@@ -396,31 +353,8 @@ class MainWindow(QMainWindow):
         outer.addWidget(hero)
         outer.addSpacing(12)
 
-        # ---- Quick filters (Uncategorized / No Tag) + folder tree in one flow ----
-        nav_container = QWidget()
-        nav_layout = QVBoxLayout(nav_container)
-        nav_layout.setContentsMargins(0, 0, 0, 0)
-        nav_layout.setSpacing(6)
-
-        # Quick-filter shortcuts: thumbnails, untagged, favorites.
-        # (User tags live in the tag browser section below, as a parallel peer.)
-        # Thumbnail filters: assets with a REAL embedded thumbnail vs those
-        # that only show a generated placeholder.
-        self.nav_thumb = self._nav_btn(tr("has_thumb"), "thumbnail",
-                                       lambda: self._set_view("has_thumb"))
-        self.nav_nothumb = self._nav_btn(tr("no_thumb"), "no_thumb",
-                                         lambda: self._set_view("no_thumb"))
-        # Favorites — quick access to starred assets
-        self.nav_fav = self._nav_btn(tr("favorites"), "fav",
-                                      lambda: self._set_view("fav"))
-        nav_layout.addWidget(self.nav_thumb)
-        nav_layout.addWidget(self.nav_nothumb)
-        nav_layout.addSpacing(6)
-        nav_layout.addWidget(self.nav_fav)
-        # Add the CONTAINER widget to the tree (not its layout). Using
-        # addLayout(nav_layout) here would reparent the layout onto `frame`
-        # and ORPHAN nav_container + its buttons, causing Qt to delete them.
-        outer.addWidget(nav_container)
+        # ---- All sidebar filters (thumb/fav/tag) rendered as unified chips
+        #      inside the tag browser below — no separate nav_container needed. ----
         outer.addWidget(self._build_tag_browser())
 
         # Folders (Eagle-style user-created folders)
@@ -467,6 +401,7 @@ class MainWindow(QMainWindow):
             "has_thumb": self.nav_thumb,
             "no_thumb": self.nav_nothumb,
             "fav": self.nav_fav,
+            "no_tag": self.nav_notag,
         }
         self._sync_nav()
         self._refresh_sidebar_stats()
@@ -482,7 +417,7 @@ class MainWindow(QMainWindow):
 
         header = QHBoxLayout()
         header.setSpacing(0)
-        title = self._nav_title(tr("tags"))
+        title = self._nav_title(tr("filters"))
         header.addWidget(title)
         header.addStretch(1)
         self.tag_clear_btn = QPushButton()
@@ -521,22 +456,43 @@ class MainWindow(QMainWindow):
             return
         self._clear_layout(self.tag_flow)
 
-        # --- "未标签" pseudo-tag chip — first item, same style as real tags ---
-        notag_chip = QPushButton(icon("tag", size=14), " " + tr("no_tag"))
-        notag_chip.setObjectName("nav")
-        notag_chip.setCheckable(True)
-        notag_chip.setCursor(Qt.PointingHandCursor)
-        notag_chip.setFixedHeight(26)
+        # --- Helper to make a unified filter chip ---
+        def _make_chip(text, icon_name, view_key, tooltip=None):
+            chip = QPushButton(icon(icon_name, size=14), " " + text)
+            chip.setObjectName("nav")
+            chip.setCheckable(True)
+            chip.setCursor(Qt.PointingHandCursor)
+            chip.setFixedHeight(26)
+            if tooltip:
+                chip.setToolTip(tooltip)
+            chip.setChecked(self._current_view == view_key)
+            chip.clicked.connect(lambda _c, k=view_key: self._set_view(k))
+            return chip
+
+        # --- Smart-filter chips: thumbnails / favorites ---
+        self.nav_thumb = _make_chip(tr("has_thumb"), "thumbnail", "has_thumb")
+        self.nav_nothumb = _make_chip(tr("no_thumb"), "no_thumb", "no_thumb")
+        self.nav_fav = _make_chip(tr("favorites"), "fav", "fav")
+        self.tag_flow.addWidget(self.nav_thumb)
+        self.tag_flow.addWidget(self.nav_nothumb)
+        self.tag_flow.addWidget(self.nav_fav)
+
+        # separator between smart filters and tag filters
+        sep1 = QFrame()
+        sep1.setObjectName("tagsep")
+        self.tag_flow.addWidget(sep1)
+
+        # --- "未标签" pseudo-tag chip ---
         notag_count = self.db.untagged_count()
-        notag_chip.setToolTip("%s · %d %s" % (
-            tr("no_tag"), notag_count, tr("tag_count_suffix")))
-        notag_chip.setChecked(self._current_view == "no_tag")
-        notag_chip.clicked.connect(lambda _c: self._set_view("no_tag"))
-        self.tag_flow.addWidget(notag_chip)
-        # thin separator between 未标签 and real tags
-        sep = QFrame()
-        sep.setObjectName("tagsep")
-        self.tag_flow.addWidget(sep)
+        self.nav_notag = _make_chip(
+            tr("no_tag"), "tag", "no_tag",
+            "%s · %d %s" % (tr("no_tag"), notag_count, tr("tag_count_suffix")))
+        self.tag_flow.addWidget(self.nav_notag)
+
+        # separator between 未标签 and real tags
+        sep2 = QFrame()
+        sep2.setObjectName("tagsep")
+        self.tag_flow.addWidget(sep2)
 
         # --- Real tag chips ---
         tags = self.db.all_tags_with_counts()
@@ -891,6 +847,33 @@ class MainWindow(QMainWindow):
         tb_actions.addWidget(self.sel_all_btn)
         tb_actions.addWidget(self.sel_invert_btn)
         tb_actions.addWidget(self.sel_clear_btn)
+
+        # separator: action cluster | search + settings
+        tb_actions.addWidget(self._sep())
+
+        # search bar (moved from removed top header into toolbar row 1)
+        self.search = QLineEdit()
+        self.search.setPlaceholderText(tr("search_ph"))
+        self.search.setClearButtonEnabled(True)
+        self.search.setMinimumWidth(200)
+        self.search.setMaximumWidth(360)
+        self._search_timer = QTimer(self)
+        self._search_timer.setSingleShot(True)
+        self._search_timer.setInterval(250)
+        self._search_timer.timeout.connect(self._apply_filters)
+        self.search.textChanged.connect(self._on_search_changed)
+        self._round_lineedit(self.search)
+        self.search.setFixedHeight(32)
+        tb_actions.addWidget(self.search, 1)
+
+        # settings button
+        self.btn_settings = QPushButton()
+        self.btn_settings.setObjectName("icon")
+        self.btn_settings.setIcon(icon("settings", size=18))
+        self.btn_settings.setFixedSize(32, 32)
+        self.btn_settings.clicked.connect(self._open_settings)
+        self._round_button(self.btn_settings)
+        tb_actions.addWidget(self.btn_settings)
 
         tb_actions.addStretch(1)
 
@@ -1541,7 +1524,6 @@ class MainWindow(QMainWindow):
                 w.update()
         self.grid.set_theme(theme)
         # Re-apply panel shadows with updated colors for the new theme
-        self._apply_soft_shadow(self.header_frame, blur=8, y_off=1, alpha=20)
         self._apply_soft_shadow(self.toolbar, blur=10, y_off=2, alpha=25)
         self._apply_soft_shadow(self.sidebar_frame, blur=12, y_off=0, alpha=18)
         self._apply_soft_shadow(self.inspector, blur=14, y_off=0, alpha=22)
@@ -1582,7 +1564,7 @@ class MainWindow(QMainWindow):
 
     def _retranslate_ui(self):
         self.setWindowTitle(tr("app_title"))
-        # header
+        # search (lives in toolbar row 1 now)
         self.search.setPlaceholderText(tr("search_ph"))
         # toolbar (filters + selection controls; the Scan/Add button is top-left)
         # filter combos
@@ -1608,12 +1590,16 @@ class MainWindow(QMainWindow):
         # sidebar nav (only Trash left; tag/smart-folder/management sections removed)
         self.lib_btn.setText(" " + tr("my_library"))
         self.nav_trash.setText(" " + tr("trash"))
+        # Nav/filter chips are rebuilt by _refresh_tag_browser() on language switch;
+        # these setattr calls are a lightweight fallback for text-only refresh.
         if hasattr(self, "nav_thumb"):
             self.nav_thumb.setText(" " + tr("has_thumb"))
         if hasattr(self, "nav_nothumb"):
             self.nav_nothumb.setText(" " + tr("no_thumb"))
         if hasattr(self, "nav_fav"):
             self.nav_fav.setText(" " + tr("favorites"))
+        if hasattr(self, "nav_notag"):
+            self.nav_notag.setText(" " + tr("no_tag"))
         self.btn_add.setText(" " + tr("scan_dir"))
         if hasattr(self, "btn_read_thumbs"):
             self.btn_read_thumbs.setText(" " + tr("read_thumbs"))

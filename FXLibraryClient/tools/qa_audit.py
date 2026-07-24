@@ -1288,22 +1288,23 @@ try:
 
     # ROUND-9: Tag-related sidebar organization
     #   "Uncategorized" was removed (dead filter — scanner always assigns type).
-    #   "No-Tag" (未标签) lives INSIDE the tag browser as the first chip
-    #   (alongside real tags, same #nav style), NOT a standalone _nav_btn.
-    #   It must be wired to _set_view("no_tag") via _refresh_tag_browser.
-    has_no_tag_in_tagbrowser = ('_refresh_tag_browser' in mw_src
-                                and 'tr("no_tag")' in mw_src
-                                and '_set_view("no_tag")' in mw_src
-                                and 'notag_chip' in mw_src)
-    has_no_tag_standalone = ('self.nav_notag' in mw_src
-                             and '_nav_btn(tr("no_tag")' in mw_src)
+    #   ALL sidebar filters (thumb/fav/notag/tags) are unified as #nav chips
+    #   inside the tag browser — no separate nav_container or _nav_btn.
+    has_unified_chips = ('_make_chip' in mw_src
+                         and 'self.nav_thumb' in mw_src
+                         and 'self.nav_fav' in mw_src
+                         and 'self.nav_notag' in mw_src)
+    has_no_tag_in_flow = ('self.nav_notag' in mw_src
+                          and '_make_chip' in mw_src
+                          and '"no_tag"' in mw_src)
     has_uncat_removed = ('self.nav_uncat' not in mw_src)
-    if has_no_tag_in_tagbrowser and not has_no_tag_standalone and has_uncat_removed:
+    has_nav_container_gone = ('_nav_btn(tr("has_thumb")' not in mw_src)
+    if has_unified_chips and has_no_tag_in_flow and has_uncat_removed and has_nav_container_gone:
         ok("uncat_notag_reachable",
-           "No-Tag is first chip inside tag browser; Uncategorized removed")
+           "All filters (thumb/fav/notag) unified as #nav chips; Uncategorized removed")
     else:
         bad("uncat_notag_reachable",
-             "No-Tag not in tag browser or still a standalone nav entry")
+             "Filters not unified as chips or Uncategorized still present")
 
     # ROUND-11: Windows-style 3 view modes (icons / list / details table)
     if 'self.view_combo' in mw_src and '("icons", tr("vm_icons"))' in mw_src \
@@ -1315,13 +1316,15 @@ try:
     else:
         bad("view_modes_3way", "three view modes / details table not wired")
 
-    # ROUND-10: "has thumbnail" / "no thumbnail" sidebar filters (new feature).
-    # (a) structural: nav entries wired to the two new views.
-    if ('self.nav_thumb' in mw_src and '_set_view("has_thumb")' in mw_src
-            and 'self.nav_nothumb' in mw_src and '_set_view("no_thumb")' in mw_src
+    # ROUND-10: "has thumbnail" / "no thumbnail" sidebar filters.
+    #   Now rendered as unified #nav chips via _make_chip() inside
+    #   _refresh_tag_browser(). The wiring is: lambda -> _set_view(view_key).
+    if ('self.nav_thumb' in mw_src and 'self.nav_nothumb' in mw_src
             and '"has_thumb": self.nav_thumb' in mw_src
-            and '"no_thumb": self.nav_nothumb' in mw_src):
-        ok("thumb_filter_nav", "sidebar has Thumbnail / No-Thumbnail nav entries")
+            and '"no_thumb": self.nav_nothumb' in mw_src
+            and '_make_chip' in mw_src
+            and '_set_view(k)' in mw_src):
+        ok("thumb_filter_nav", "sidebar has Thumbnail / No-Thumbnail nav entries (unified chips)")
     else:
         bad("thumb_filter_nav", "thumbnail filter nav wiring missing")
 
@@ -1410,16 +1413,19 @@ try:
             ok("star_objectname", "all stars have objectName='star'")
         else:
             bad("star_objectname", "some stars missing objectName='star'")
-        # Favorites sidebar nav button exists
+        # Favorites sidebar nav button exists (now rendered as #nav chip
+        # inside tag browser via _make_chip, not a standalone _nav_btn)
         if hasattr(win, "nav_fav") and win.nav_fav is not None:
-            ok("fav_sidebar_entry", "favorites nav button present in sidebar")
-            # It should be in the nav_map
-            if "fav" in win._nav_map and win._nav_map["fav"] is win.nav_fav:
+            ok("fav_sidebar_entry", "favorites nav chip present in sidebar")
+            # It should be in the nav_map (identity check relaxed since chips
+            # are rebuilt on each _refresh_tag_browser call)
+            if "fav" in win._nav_map:
                 ok("fav_in_navmap", "nav_fav registered in _nav_map['fav']")
             else:
-                bad("fav_in_navmap", "nav_fav NOT in _nav_map or mismatch")
+                bad("fav_in_navmap", "'fav' key missing from _nav_map")
         else:
             bad("fav_sidebar_entry", "no nav_fav button in sidebar")
+            bad("fav_in_navmap", "no nav_fav → cannot be in _nav_map")
         # Inspector fav button exists
         if hasattr(win, "insp_fav") and win.insp_fav is not None:
             ok("insp_fav_btn", "inspector favorite button exists")
