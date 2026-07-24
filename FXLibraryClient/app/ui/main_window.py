@@ -281,19 +281,11 @@ class MainWindow(QMainWindow):
         self._round_lineedit(self.search)
         hl.addWidget(self.search, 1)
 
-        # right controls — language + settings. Theme toggle removed (dark-only).
-
-        self.btn_lang = QPushButton("中" if self.lang == "zh" else "EN")
-        self.btn_lang.setObjectName("lang")
-        self.btn_lang.setFixedSize(46, 36)
-        self.btn_lang.clicked.connect(self._toggle_language)
-        self._round_button(self.btn_lang)
-        hl.addWidget(self.btn_lang)
-
+        # right controls — settings only (language moved to Settings dialog).
         self.btn_settings = QPushButton()
         self.btn_settings.setObjectName("icon")
         self.btn_settings.setIcon(icon("settings", size=18))
-        self.btn_settings.setFixedSize(34, 36)
+        self.btn_settings.setFixedSize(36, 36)
         self.btn_settings.clicked.connect(self._open_settings)
         self._round_button(self.btn_settings)
         hl.addWidget(self.btn_settings)
@@ -417,19 +409,11 @@ class MainWindow(QMainWindow):
                                        lambda: self._set_view("has_thumb"))
         self.nav_nothumb = self._nav_btn(tr("no_thumb"), "no_thumb",
                                          lambda: self._set_view("no_thumb"))
-        # Untagged — parallel PEER to the "标签" section below (same _nav_btn
-        # style as 收藏 / 缩略图), NOT nested inside it.
-        self.nav_notag = self._nav_btn(tr("no_tag"), "no_tag",
-                                       lambda: self._set_view("no_tag"))
-        self.nav_notag.setToolTip("%s · %d %s" % (
-            tr("no_tag"), self.db.untagged_count(), tr("tag_count_suffix")))
         # Favorites — quick access to starred assets
         self.nav_fav = self._nav_btn(tr("favorites"), "fav",
                                       lambda: self._set_view("fav"))
         nav_layout.addWidget(self.nav_thumb)
         nav_layout.addWidget(self.nav_nothumb)
-        nav_layout.addSpacing(6)
-        nav_layout.addWidget(self.nav_notag)
         nav_layout.addSpacing(6)
         nav_layout.addWidget(self.nav_fav)
         # Add the CONTAINER widget to the tree (not its layout). Using
@@ -481,7 +465,6 @@ class MainWindow(QMainWindow):
             "trash": self.nav_trash,
             "has_thumb": self.nav_thumb,
             "no_thumb": self.nav_nothumb,
-            "no_tag": self.nav_notag,
             "fav": self.nav_fav,
         }
         self._sync_nav()
@@ -537,8 +520,25 @@ class MainWindow(QMainWindow):
             return
         self._clear_layout(self.tag_flow)
 
-        # --- Real tag chips (the "未标签" pseudo-filter lives as a
-        #     parallel _nav_btn above, next to 收藏 / 缩略图) ---
+        # --- "未标签" pseudo-tag chip — first item, same style as real tags ---
+        if hasattr(self, "nav_notag"):
+            notag_chip = QPushButton(icon("tag", size=14), " " + tr("no_tag"))
+            notag_chip.setObjectName("nav")
+            notag_chip.setCheckable(True)
+            notag_chip.setCursor(Qt.PointingHandCursor)
+            notag_chip.setFixedHeight(26)
+            notag_count = self.db.untagged_count()
+            notag_chip.setToolTip("%s · %d %s" % (
+                tr("no_tag"), notag_count, tr("tag_count_suffix")))
+            notag_chip.setChecked(self._current_view == "no_tag")
+            notag_chip.clicked.connect(lambda _c: self._set_view("no_tag"))
+            self.tag_flow.addWidget(notag_chip)
+            # thin separator between 未标签 and real tags
+            sep = QFrame()
+            sep.setObjectName("tagsep")
+            self.tag_flow.addWidget(sep)
+
+        # --- Real tag chips ---
         tags = self.db.all_tags_with_counts()
         if not tags:
             hint = QLabel(tr("no_tags_hint"))
@@ -843,7 +843,7 @@ class MainWindow(QMainWindow):
         # in sync with the active theme.
         self.btn_add = QPushButton(icon("plus", size=16), " " + tr("scan_dir"))
         self.btn_add.setObjectName("primary")
-        self.btn_add.setFixedHeight(32)
+        self.btn_add.setFixedSize(110, 32)
         self.btn_add.setCursor(Qt.PointingHandCursor)
         self.btn_add.setToolTip(tr("scan_dir_tip"))
         self.btn_add.clicked.connect(self._add_folder)
@@ -1511,7 +1511,7 @@ class MainWindow(QMainWindow):
 
     def _set_busy(self, busy, msg=""):
         for w in (self.btn_add, self.search,
-                  self.btn_settings, self.btn_lang):
+                  self.btn_settings):
             w.setEnabled(not busy)
         if busy:
             self.statusBar().showMessage(msg or tr("working"))
@@ -1584,7 +1584,6 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(tr("app_title"))
         # header
         self.search.setPlaceholderText(tr("search_ph"))
-        self.btn_lang.setText("中" if self.lang == "zh" else "EN")
         # toolbar (filters + selection controls; the Scan/Add button is top-left)
         # filter combos
         self.type_combo.setItemText(0, tr("f_type"))

@@ -682,7 +682,7 @@ QPushButton#batchbtn:hover {{ background: {panel2}; border-color: {accent}; }}
 QPushButton#batchbtn:pressed {{ background: {card_sel}; }}
 
 QFrame#header {{
-    background: {bg2};
+    background: transparent;
     border-bottom: 1px solid {border};
 }}
 QFrame#header #brand {{ color: {text}; font-weight: 700; font-size: 14px; }}
