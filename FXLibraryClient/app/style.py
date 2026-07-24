@@ -306,6 +306,22 @@ QPushButton#primary:hover {{ background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
     color: #ffffff; outline: 2px solid {accent}; outline-offset: 1px; }}
 QPushButton#primary:pressed {{ background: {accent_pressed}; color: #ffffff; }}
 
+/* Toolbar primary action — same gradient as #primary but compact padding to
+   match adjacent #act buttons in the toolbar row (user: "扫描目录比同一排的按钮宽"). */
+QPushButton#toolbarprimary {{
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+        stop:0 {accent}, stop:1 {accent2});
+    color: #ffffff;
+    border: none;
+    border-radius: {{r_md}};
+    padding: 5px 10px;
+    font-weight: 600;
+}}
+QPushButton#toolbarprimary:hover {{ background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+        stop:0 {accent_hover}, stop:1 #00b8ff);
+    color: #ffffff; }}
+QPushButton#toolbarprimary:pressed {{ background: {accent_pressed}; color: #ffffff; }}
+
 /* ---------- line edits ---------- */
 QLineEdit {{
     background: {input_bg};
@@ -682,7 +698,7 @@ QPushButton#batchbtn:hover {{ background: {panel2}; border-color: {accent}; }}
 QPushButton#batchbtn:pressed {{ background: {card_sel}; }}
 
 QFrame#header {{
-    background: transparent;
+    background: {bg};
     border-bottom: 1px solid {border};
 }}
 QFrame#header #brand {{ color: {text}; font-weight: 700; font-size: 14px; }}

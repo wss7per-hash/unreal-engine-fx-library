@@ -279,6 +279,7 @@ class MainWindow(QMainWindow):
         self._search_timer.timeout.connect(self._apply_filters)
         self.search.textChanged.connect(self._on_search_changed)
         self._round_lineedit(self.search)
+        self.search.setFixedHeight(36)
         hl.addWidget(self.search, 1)
 
         # right controls — settings only (language moved to Settings dialog).
@@ -521,22 +522,21 @@ class MainWindow(QMainWindow):
         self._clear_layout(self.tag_flow)
 
         # --- "未标签" pseudo-tag chip — first item, same style as real tags ---
-        if hasattr(self, "nav_notag"):
-            notag_chip = QPushButton(icon("tag", size=14), " " + tr("no_tag"))
-            notag_chip.setObjectName("nav")
-            notag_chip.setCheckable(True)
-            notag_chip.setCursor(Qt.PointingHandCursor)
-            notag_chip.setFixedHeight(26)
-            notag_count = self.db.untagged_count()
-            notag_chip.setToolTip("%s · %d %s" % (
-                tr("no_tag"), notag_count, tr("tag_count_suffix")))
-            notag_chip.setChecked(self._current_view == "no_tag")
-            notag_chip.clicked.connect(lambda _c: self._set_view("no_tag"))
-            self.tag_flow.addWidget(notag_chip)
-            # thin separator between 未标签 and real tags
-            sep = QFrame()
-            sep.setObjectName("tagsep")
-            self.tag_flow.addWidget(sep)
+        notag_chip = QPushButton(icon("tag", size=14), " " + tr("no_tag"))
+        notag_chip.setObjectName("nav")
+        notag_chip.setCheckable(True)
+        notag_chip.setCursor(Qt.PointingHandCursor)
+        notag_chip.setFixedHeight(26)
+        notag_count = self.db.untagged_count()
+        notag_chip.setToolTip("%s · %d %s" % (
+            tr("no_tag"), notag_count, tr("tag_count_suffix")))
+        notag_chip.setChecked(self._current_view == "no_tag")
+        notag_chip.clicked.connect(lambda _c: self._set_view("no_tag"))
+        self.tag_flow.addWidget(notag_chip)
+        # thin separator between 未标签 and real tags
+        sep = QFrame()
+        sep.setObjectName("tagsep")
+        self.tag_flow.addWidget(sep)
 
         # --- Real tag chips ---
         tags = self.db.all_tags_with_counts()
@@ -842,8 +842,8 @@ class MainWindow(QMainWindow):
         # Uses the global #primary style (tokenized) — no inline QSS so it stays
         # in sync with the active theme.
         self.btn_add = QPushButton(icon("plus", size=16), " " + tr("scan_dir"))
-        self.btn_add.setObjectName("primary")
-        self.btn_add.setFixedSize(110, 32)
+        self.btn_add.setObjectName("toolbarprimary")
+        self.btn_add.setFixedHeight(32)
         self.btn_add.setCursor(Qt.PointingHandCursor)
         self.btn_add.setToolTip(tr("scan_dir_tip"))
         self.btn_add.clicked.connect(self._add_folder)

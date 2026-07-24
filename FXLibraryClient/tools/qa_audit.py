@@ -1046,8 +1046,8 @@ try:
     # F2: no inline gradient QSS on primary button (theme single-source)
     if "self.btn_add.setStyleSheet" in mw_src:
         bad("primary_inline_qss", "btn_add still has inline QSS")
-    else:
-        ok("primary_inline_qss", "btn_add uses global #primary style")
+    elif '"toolbarprimary"' in mw_src or '"primary"' in mw_src:
+        ok("primary_inline_qss", "btn_add uses global tokenized style (#toolbarprimary or #primary)")
 
     # F4: filter combos equal width
     if win.type_combo.sizePolicy().horizontalPolicy() == QSizePolicy.Expanding:
