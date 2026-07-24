@@ -219,6 +219,7 @@ QPushButton#nav {{
     font-weight: 500;
     text-align: left;
     min-height: 26px;
+    max-height: 26px;
 }}
 QPushButton#nav:hover {{
     background: {panel2};

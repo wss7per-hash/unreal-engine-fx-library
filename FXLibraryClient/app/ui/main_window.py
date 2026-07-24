@@ -484,69 +484,107 @@ class MainWindow(QMainWindow):
 
         scroll = QScrollArea()
         scroll.setObjectName("tagscroll")
-        scroll.setWidgetResizable(True)
+        scroll.setWidgetResizable(False)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         scroll.setFrameShape(QFrame.NoFrame)
         self.tag_flow_widget = QWidget()
-        self.tag_flow_widget.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
-        self.tag_flow = QVBoxLayout(self.tag_flow_widget)
-        self.tag_flow.setContentsMargins(0, 0, 0, 0)
-        self.tag_flow.setSpacing(4)
-        self.tag_flow.setAlignment(Qt.AlignTop)
+        # No layout — chips are manually positioned with setGeometry() so their
+        # vertical spacing is deterministic regardless of QSS-vs-setFixedHeight
+        # conflicts.  This avoids the Chips-38px-tall-but-15px-apart overlap
+        # that made tag / folder clicks land on the wrong widget.
         scroll.setWidget(self.tag_flow_widget)
+        # Keep a reference so viewport resize can update chip widths.
+        self._tag_scroll = scroll
         v.addWidget(scroll, 1)
 
         self._refresh_tag_browser()
         return frame
 
     def _refresh_tag_browser(self):
-        """Repopulate the sidebar tag cloud from the DB."""
-        if not getattr(self, "tag_flow", None):
-            return
-        self._clear_layout(self.tag_flow)
+        """Repopulate the sidebar tag cloud from the DB.
 
-        # --- Helper to make a unified filter chip ---
+        Chips are positioned *manually* with setGeometry() instead of using
+        any layout.  QVBoxLayout combined with QSS `min-height` and
+        setFixedHeight() produced chip slots that were SHORTER than the
+        rendered widget height, so chips overlapped vertically and a real
+        mouse click landed on the neighbour or the section title instead of
+        the intended tag — which made tags, folders, and filters all appear
+        "broken".  Manual positioning guarantees every chip occupies exactly
+        its own vertical band with zero overlap.
+        """
+        tw = getattr(self, "tag_flow_widget", None)
+        if tw is None:
+            return
+
+        # --- clear all old widgets (no QVBoxLayout to takeFrom) ---
+        for c in list(tw.children()):
+            c.setParent(None)
+            c.deleteLater()
+
+        CHIP_W = tw.width()
+        if CHIP_W < 80:
+            try:
+                CHIP_W = getattr(self, "_tag_scroll", None).viewport().width()
+            except Exception:
+                CHIP_W = 200
+        if CHIP_W < 80:
+            CHIP_W = 200
+        FW = CHIP_W
+        y = 0
+        SPACING = 6
+
+        def _place_widget(w):
+            """Show w, read its actual rendered height, and place it at
+            the current y.  Returns the widget so callers can store it."""
+            nonlocal y
+            w.setParent(tw)
+            w.show()
+            # Let Qt finalise the widget's style-dependent size before we
+            # measure.  This is the key that makes the manual layout
+            # bulletproof regardless of QSS padding / min-height.
+            QApplication.processEvents()
+            h = w.height()
+            if h < 1:
+                h = w.sizeHint().height()
+            if h < 1:
+                h = 28
+            w.setGeometry(0, y, FW, h)
+            y += h + SPACING
+            return w
+
+        # --- Helper to make and position a smart-filter chip ---
         def _make_chip(text, icon_name, view_key, tooltip=None):
             chip = QPushButton(icon(icon_name, size=14), " " + text)
             chip.setObjectName("nav")
             chip.setCheckable(True)
             chip.setCursor(Qt.PointingHandCursor)
-            chip.setFixedHeight(26)
-            chip.setEnabled(True)          # ensure interactive
-            chip.setFocusPolicy(Qt.NoFocus) # prevent focus stealing from grid
+            chip.setEnabled(True)
+            chip.setFocusPolicy(Qt.NoFocus)
             if tooltip:
                 chip.setToolTip(tooltip)
             chip.setChecked(self._current_view == view_key)
-            # Use a closure that captures view_key at definition time to avoid
-            # late-binding issues in loops. The _c param receives the checked
-            # state bool from the checkable button's clicked(bool) signal.
             chip.clicked.connect(lambda _checked, k=view_key: self._set_view(k))
-            return chip
+            return _place_widget(chip)
 
         # --- Smart-filter chips: thumbnails / favorites / untagged ---
         self.nav_thumb = _make_chip(tr("has_thumb"), "thumbnail", "has_thumb")
         self.nav_nothumb = _make_chip(tr("no_thumb"), "no_thumb", "no_thumb")
         self.nav_fav = _make_chip(tr("favorites"), "fav", "fav")
-        self.tag_flow.addWidget(self.nav_thumb)
-        self.tag_flow.addWidget(self.nav_nothumb)
-        self.tag_flow.addWidget(self.nav_fav)
 
-        # --- "未标签" pseudo-tag — lives with smart filters, NOT with real tags ---
         notag_count = self.db.untagged_count()
         self.nav_notag = _make_chip(
             tr("no_tag"), "tag", "no_tag",
             "%s · %d %s" % (tr("no_tag"), notag_count, tr("tag_count_suffix")))
-        self.tag_flow.addWidget(self.nav_notag)
 
-        # separator between smart filters and real tags
+        # --- separator ---
         sep1 = QFrame()
         sep1.setObjectName("tagsep")
-        self.tag_flow.addWidget(sep1)
+        _place_widget(sep1)
 
-        # --- Section header for real tags ---
+        # --- Section header ---
         tag_title = self._nav_title(tr("tags"))
-        self.tag_flow.addWidget(tag_title)
+        _place_widget(tag_title)
 
         # --- Real tag chips ---
         tags = self.db.all_tags_with_counts()
@@ -554,22 +592,29 @@ class MainWindow(QMainWindow):
             hint = QLabel(tr("no_tags_hint"))
             hint.setObjectName("taghint")
             hint.setWordWrap(True)
-            self.tag_flow.addWidget(hint)
+            _place_widget(hint)
             self.tag_clear_btn.setVisible(False)
+            tw.setFixedSize(FW, y)
             return
+
         for tag, count in tags:
             chip = QPushButton(icon("tag", size=14), " " + tag)
             chip.setObjectName("nav")
             chip.setCheckable(True)
             chip.setCursor(Qt.PointingHandCursor)
-            chip.setFixedHeight(26)
-            chip.setEnabled(True)          # ensure interactive
-            chip.setFocusPolicy(Qt.NoFocus) # prevent focus stealing from grid
+            chip.setEnabled(True)
+            chip.setFocusPolicy(Qt.NoFocus)
             chip.setToolTip("%s · %d %s" % (tag, count, tr("tag_count_suffix")))
             chip.setChecked(self._active_tag == tag)
             chip.clicked.connect(lambda _checked, t=tag: self._set_tag_filter(t))
-            self.tag_flow.addWidget(chip)
+            _place_widget(chip)
+
         self.tag_clear_btn.setVisible(bool(self._active_tag))
+        tw.setFixedSize(FW, y)
+
+    def _size_tag_flow_to_content(self):
+        # Kept as no-op stub; manual positioning handles sizing inline now.
+        pass
 
     def _set_tag_filter(self, tag):
         """Toggle the active tag filter and re-apply the grid filters."""
