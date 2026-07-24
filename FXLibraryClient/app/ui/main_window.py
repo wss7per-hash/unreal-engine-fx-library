@@ -3347,5 +3347,7 @@ def main():
     app.setStyle("Fusion")
     app.setWindowIcon(app_icon())
     win = MainWindow()
+    dbg("STARTUP build=2026-07-24T17:55 SET_ASSETS_DIAG=on "
+         "py=%s" % sys.version.split()[0])
     win.show()
     sys.exit(app.exec())

@@ -15,6 +15,23 @@ from app.i18n import tr
 from app.icons import icon
 from app.style import THEMES
 
+# --- Decisive diagnostic logger: writes to the SAME file as main_window.dbg
+# so a single %TEMP%/fxlibrary_debug.log captures the whole click->filter
+# chain. This records the grid's REAL render state right after set_assets(),
+# which is the one place every filter path converges. ---
+import datetime as _dt
+_GDBG_PATH = os.path.join(os.environ.get("TEMP", os.path.expanduser("~")),
+                        "fxlibrary_debug.log")
+def _gdbg(*a):
+    try:
+        with open(_GDBG_PATH, "a", encoding="utf-8") as _f:
+            _f.write("[%s] %s\n" % (
+                _dt.datetime.now().strftime("%H:%M:%S.%f")[:-3],
+                " ".join(str(x) for x in a)))
+            _f.flush()
+    except Exception:
+        pass
+
 CARD_W = 190
 THUMB_H = 128
 
@@ -756,6 +773,15 @@ class AssetGrid(QScrollArea):
         # repaint() forces the paint *now* so the filtered grid shows
         # immediately after a tag/folder click.
         self.viewport().repaint()
+        # Decisive state dump: if live==expected but user sees stale pixels,
+        # it is a pure paint problem; if live is wrong/zero, the virtual-
+        # scroll windowing used a stale viewport width / card height.
+        _gdbg("SET_ASSETS src=%d live=%d vpW=%d vpH=%d cols=%d "
+               "cardW=%d cardH=%d scroll=%d"
+               % (len(self.assets), len(self._live),
+                  self.viewport().width(), self.viewport().height(),
+                  self._cols(), self._card_w, self._card_h,
+                  self.verticalScrollBar().value()))
 
     def _cols(self):
         if self.view_mode == "list":
