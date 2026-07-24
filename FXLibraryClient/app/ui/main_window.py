@@ -522,34 +522,35 @@ class MainWindow(QMainWindow):
             c.setParent(None)
             c.deleteLater()
 
-        CHIP_W = tw.width()
-        if CHIP_W < 80:
-            try:
-                CHIP_W = getattr(self, "_tag_scroll", None).viewport().width()
-            except Exception:
-                CHIP_W = 200
-        if CHIP_W < 80:
-            CHIP_W = 200
-        FW = CHIP_W
-        y = 0
-        SPACING = 6
+        # Always use the scroll viewport's width.  Using tag_flow_widget.width()
+        # itself was unreliable — without a layout the widget defaults to ~640
+        # which is wider than the sidebar, so chips extended into the main grid
+        # area and AssetCards there painted on top of them, intercepting clicks.
+        _scroll = getattr(self, "_tag_scroll", None)
+        FW = _scroll.viewport().width() if _scroll else 240
+        if FW < 80:
+            FW = 240
 
-        def _place_widget(w):
-            """Show w, read its actual rendered height, and place it at
-            the current y.  Returns the widget so callers can store it."""
+        # Chip height is observed to be 38px by QSS #nav (padding 5px + icon 14 +
+        # font 12.5px).  Hardcode to that so we don't have to call
+        # QApplication.processEvents() inside a click handler (which can re-enter
+        # the event loop and break event delivery on some platforms).
+        CHIP_H = 38
+        SPACING = 6
+        y = 0
+
+        def _place_widget(w, h=None):
+            """Place widget w at (0, y) with width FW and given/measured height."""
             nonlocal y
             w.setParent(tw)
-            w.show()
-            # Let Qt finalise the widget's style-dependent size before we
-            # measure.  This is the key that makes the manual layout
-            # bulletproof regardless of QSS padding / min-height.
-            QApplication.processEvents()
-            h = w.height()
-            if h < 1:
-                h = w.sizeHint().height()
-            if h < 1:
-                h = 28
+            if h is None:
+                # Fallback measurement — works without processEvents for chips
+                # whose QSS style is already applied at construction time.
+                h = w.sizeHint().height() or w.height() or CHIP_H
+            if h < 10:
+                h = CHIP_H
             w.setGeometry(0, y, FW, h)
+            w.show()
             y += h + SPACING
             return w
 
@@ -565,7 +566,7 @@ class MainWindow(QMainWindow):
                 chip.setToolTip(tooltip)
             chip.setChecked(self._current_view == view_key)
             chip.clicked.connect(lambda _checked, k=view_key: self._set_view(k))
-            return _place_widget(chip)
+            return _place_widget(chip, CHIP_H)
 
         # --- Smart-filter chips: thumbnails / favorites / untagged ---
         self.nav_thumb = _make_chip(tr("has_thumb"), "thumbnail", "has_thumb")
@@ -580,11 +581,12 @@ class MainWindow(QMainWindow):
         # --- separator ---
         sep1 = QFrame()
         sep1.setObjectName("tagsep")
-        _place_widget(sep1)
+        _place_widget(sep1, 1)
 
-        # --- Section header ---
+        # --- Section header (sizeHint gives ~20) ---
         tag_title = self._nav_title(tr("tags"))
-        _place_widget(tag_title)
+        title_h = max(18, tag_title.sizeHint().height() or 20)
+        _place_widget(tag_title, title_h)
 
         # --- Real tag chips ---
         tags = self.db.all_tags_with_counts()
@@ -592,7 +594,7 @@ class MainWindow(QMainWindow):
             hint = QLabel(tr("no_tags_hint"))
             hint.setObjectName("taghint")
             hint.setWordWrap(True)
-            _place_widget(hint)
+            _place_widget(hint, 40)
             self.tag_clear_btn.setVisible(False)
             tw.setFixedSize(FW, y)
             return
@@ -607,7 +609,7 @@ class MainWindow(QMainWindow):
             chip.setToolTip("%s · %d %s" % (tag, count, tr("tag_count_suffix")))
             chip.setChecked(self._active_tag == tag)
             chip.clicked.connect(lambda _checked, t=tag: self._set_tag_filter(t))
-            _place_widget(chip)
+            _place_widget(chip, CHIP_H)
 
         self.tag_clear_btn.setVisible(bool(self._active_tag))
         tw.setFixedSize(FW, y)
