@@ -247,6 +247,32 @@ QPushButton#tag:checked {{
     font-weight: 600;
 }}
 
+QPushButton#tagchipbar {{
+    background: {bg2};
+    color: {muted};
+    border: 1px solid {border};
+    border-radius: {{r_md}};
+    padding: 3px 9px;
+    font-size: 11.5px;
+    font-weight: 500;
+    text-align: left;
+    min-height: 24px;
+}}
+QPushButton#tagchipbar:hover {{ border-color: {accent}; color: {accent}; background: {panel2}; }}
+QPushButton#tagchipbar:checked {{
+    border-color: {accent};
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 rgba(99,91,255,0.16), stop:1 rgba(99,91,255,0.08));
+    color: {accent};
+    font-weight: 600;
+}}
+
+QLabel#taghint {{
+    color: {muted2};
+    font-size: 11px;
+    padding: 2px 4px;
+}}
+
 QPushButton#act {{
     background: {bg2};
     color: {text};

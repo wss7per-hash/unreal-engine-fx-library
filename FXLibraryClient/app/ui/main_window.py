@@ -162,6 +162,7 @@ class MainWindow(QMainWindow):
         self._all_assets = []
         self._current_asset = None
         self._current_view = "all"
+        self._active_tag = None
         self._current_cat = None
         self._current_src = "all"
         self._current_folder = None
@@ -455,6 +456,7 @@ class MainWindow(QMainWindow):
         # addLayout(nav_layout) here would reparent the layout onto `frame`
         # and ORPHAN nav_container + its buttons, causing Qt to delete them.
         outer.addWidget(nav_container)
+        outer.addWidget(self._build_tag_browser())
 
         # Folders (Eagle-style user-created folders)
         folder_frame = QWidget()
@@ -506,6 +508,87 @@ class MainWindow(QMainWindow):
         self._sync_nav()
         self._refresh_sidebar_stats()
         return frame
+
+    def _build_tag_browser(self):
+        """Sidebar clickable tag cloud — click a tag to filter the grid."""
+        frame = QFrame()
+        frame.setObjectName("tagbrowser")
+        v = QVBoxLayout(frame)
+        v.setContentsMargins(0, 0, 0, 0)
+        v.setSpacing(6)
+
+        header = QHBoxLayout()
+        header.setSpacing(0)
+        title = self._nav_title(tr("tags"))
+        header.addWidget(title)
+        header.addStretch(1)
+        self.tag_clear_btn = QPushButton()
+        self.tag_clear_btn.setObjectName("iconghost")
+        self.tag_clear_btn.setIcon(icon("close", size=12))
+        self.tag_clear_btn.setIconSize(QSize(12, 12))
+        self.tag_clear_btn.setFixedSize(22, 22)
+        self.tag_clear_btn.setToolTip(tr("clear_tag_filter"))
+        self.tag_clear_btn.setCursor(Qt.PointingHandCursor)
+        self.tag_clear_btn.clicked.connect(lambda _c: self._set_tag_filter(None))
+        self.tag_clear_btn.setVisible(False)
+        header.addWidget(self.tag_clear_btn)
+        v.addLayout(header)
+
+        scroll = QScrollArea()
+        scroll.setObjectName("tagscroll")
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setStyleSheet("background:transparent; border:none;")
+        self.tag_flow_widget = QWidget()
+        self.tag_flow = QVBoxLayout(self.tag_flow_widget)
+        self.tag_flow.setContentsMargins(0, 0, 0, 0)
+        self.tag_flow.setSpacing(4)
+        self.tag_flow.setAlignment(Qt.AlignTop)
+        scroll.setWidget(self.tag_flow_widget)
+        v.addWidget(scroll, 1)
+
+        self._refresh_tag_browser()
+        return frame
+
+    def _refresh_tag_browser(self):
+        """Repopulate the sidebar tag cloud from the DB."""
+        if not getattr(self, "tag_flow", None):
+            return
+        self._clear_layout(self.tag_flow)
+        tags = self.db.all_tags_with_counts()
+        if not tags:
+            hint = QLabel(tr("no_tags_hint"))
+            hint.setObjectName("taghint")
+            hint.setWordWrap(True)
+            self.tag_flow.addWidget(hint)
+            self.tag_clear_btn.setVisible(False)
+            return
+        for tag, count in tags:
+            chip = QPushButton(tag)
+            chip.setObjectName("tagchipbar")
+            chip.setCursor(Qt.PointingHandCursor)
+            chip.setFixedHeight(26)
+            chip.setToolTip("%s · %d %s" % (tag, count, tr("tag_count_suffix")))
+            chip.setChecked(self._active_tag == tag)
+            chip.clicked.connect(lambda _c, t=tag: self._set_tag_filter(t))
+            self.tag_flow.addWidget(chip)
+        self.tag_clear_btn.setVisible(bool(self._active_tag))
+
+    def _set_tag_filter(self, tag):
+        """Toggle the active tag filter and re-apply the grid filters."""
+        if self._active_tag == tag:
+            self._active_tag = None
+        else:
+            self._active_tag = tag
+        self._current_view = "all"
+        self._current_cat = None
+        self._current_folder = None
+        self.folder_tree.clearSelection()
+        self._sync_nav()
+        self._refresh_tag_browser()
+        self._apply_filters()
 
     def _refresh_sidebar_stats(self):
         """Keep the brand/stat hero card in sync with the loaded library."""
@@ -620,7 +703,9 @@ class MainWindow(QMainWindow):
         self._current_folder = data
         self._current_view = "all"
         self._current_cat = None
+        self._active_tag = None
         self._sync_nav()
+        self._refresh_tag_browser()
         self._apply_filters()
 
     def _deselect_folder(self):
@@ -632,7 +717,9 @@ class MainWindow(QMainWindow):
         self._current_folder = None
         self._current_view = "all"
         self._current_cat = None
+        self._active_tag = None
         self._sync_nav()
+        self._refresh_tag_browser()
         self._apply_filters()
 
     def _on_folder_tree_context(self, pos):
@@ -1734,8 +1821,10 @@ class MainWindow(QMainWindow):
         self._current_view = view
         self._current_cat = None
         self._current_folder = None
+        self._active_tag = None
         self.folder_tree.clearSelection()
         self._sync_nav()
+        self._refresh_tag_browser()
         self._apply_filters()
         # Update batch bar for trash view
         self._on_selection_changed(len(self.grid._selected))
@@ -1747,8 +1836,10 @@ class MainWindow(QMainWindow):
             self._current_cat = cat
         self._current_view = "all"
         self._current_folder = None
+        self._active_tag = None
         self.folder_tree.clearSelection()
         self._sync_nav()
+        self._refresh_tag_browser()
         self._apply_filters()
 
     @staticmethod
@@ -1888,6 +1979,8 @@ class MainWindow(QMainWindow):
         """Apply type / source / tags / search filtering to a list of assets."""
         out = []
         for a in items:
+            if self._active_tag and self._active_tag not in (a.tags or "").split(","):
+                continue
             if self._current_cat and a.type != self._current_cat:
                 continue
             if t and a.type != t:
@@ -1959,6 +2052,10 @@ class MainWindow(QMainWindow):
             self.section_title.setText(self._current_folder.get("name", tr("folder")))
             self.section_count.setText("· %d%s" % (len(filtered), tr("found")))
             return
+        if self._active_tag:
+            self.section_title.setText("%s：%s" % (tr("tags"), self._active_tag))
+            self.section_count.setText("· %d%s" % (len(filtered), tr("found")))
+            return
         title_map = {
             "all": "all_fx", "fav": "favorites",
             "trash": "trash", "uncategorized": "uncategorized",
@@ -2021,6 +2118,7 @@ class MainWindow(QMainWindow):
         self._refresh_folder_tree()
         self._apply_filters()
         self._refresh_sidebar_stats()
+        self._refresh_tag_browser()
         # Total count is already shown in the content header ("· N 个结果"),
         # so the status bar shows a transient ready state instead of repeating it.
         self.statusBar().showMessage(tr("ready"))
@@ -2230,6 +2328,7 @@ class MainWindow(QMainWindow):
             self.db.set_tags(self._current_asset.source_path, self._current_asset.tags)
             self.insp_tag_input.clear()
             self._show_inspector(self._current_asset)
+            self._refresh_tag_browser()
             self._apply_filters()
 
     def _remove_tag(self, tag):
@@ -2240,6 +2339,7 @@ class MainWindow(QMainWindow):
         self._current_asset.tags = ",".join(tags)
         self.db.set_tags(self._current_asset.source_path, self._current_asset.tags)
         self._show_inspector(self._current_asset)
+        self._refresh_tag_browser()
         self._apply_filters()
 
     def _on_note_changed(self):

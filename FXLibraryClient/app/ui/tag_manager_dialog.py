@@ -92,6 +92,7 @@ class TagManagerDialog(QDialog):
             self.db.rename_tag(tag, name.strip())
             self._refresh()
             if self.parent():
+                self.parent()._refresh_tag_browser()
                 self.parent()._apply_filters()
 
     def _delete(self, tag, count):
@@ -103,4 +104,5 @@ class TagManagerDialog(QDialog):
             self.db.delete_tag(tag)
             self._refresh()
             if self.parent():
+                self.parent()._refresh_tag_browser()
                 self.parent()._apply_filters()
