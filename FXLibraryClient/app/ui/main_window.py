@@ -2449,6 +2449,10 @@ class MainWindow(QMainWindow):
                                cascade=data["cascade"], unknown=data["unknown"]))
             if data.get("skipped", 0):
                 self.log.append(tr("skipped_n", n=data["skipped"]))
+            ue_cats = data.get("ue_categorized", 0)
+            if ue_cats:
+                folders = ", ".join(data.get("ue_folders", []))
+                self.log.append(tr("cat_ue_auto", n=ue_cats, folders=folders))
             self._reload_library()
             # ScannerWorker already extracts embedded thumbnails locally; never
             # auto-launch UnrealEditor (user opted for pure-Python reading).
@@ -2796,6 +2800,13 @@ class MainWindow(QMainWindow):
                     has_thumb=bool(thumb_dst))
                 self.db.upsert_asset(a)
                 imported += 1
+                # Re-create the source UE project category when the pack
+                # recorded one (so a pack moved to another machine keeps its
+                # auto-grouping). Uses the same folder name as the scan path.
+                _uf = item.get("_ue_folder") or None
+                if _uf:
+                    fid = self.db.ensure_folder(_uf, path=item.get("uproject_path"), virtual=1)
+                    self.db.add_asset_to_folder(dst, fid)
         return imported
 
     # ---------- export .fxpack (portable, self-contained archive) ----------

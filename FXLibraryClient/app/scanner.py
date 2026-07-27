@@ -19,6 +19,7 @@ from PySide6.QtCore import QThread, Signal
 from app.database import Database
 from app.models import FXAsset, TYPE_NIAGARA, TYPE_CASCADE, TYPE_UNKNOWN
 from app import uasset_thumb
+from app.ue_project import detect_ue_project, project_folder_name
 
 # Directories that never contain user FX assets worth cataloging.
 SKIP_DIRS = {
@@ -26,6 +27,9 @@ SKIP_DIRS = {
     "Config", "Saved", "Intermediate", "Binaries", "DerivedDataCache",
     "ThirdParty", "Extras", "Source", "Build",
 }
+
+# Sentinel for "not yet cached" (distinct from a cached None / no-project).
+_MISSING = object()
 
 
 def find_uassets(root: str) -> List[str]:
@@ -205,7 +209,7 @@ class ScannerWorker(QThread):
 
     def __init__(self, db_path: str, roots: List[str], thumbs_dir: str,
                  copy: bool = False, files_dir: str = None, fx_only: bool = True,
-                 read_thumbs: bool = True):
+                 read_thumbs: bool = True, auto_categorize_ue: bool = True):
         super().__init__()
         self.db_path = db_path
         self.roots = [os.path.abspath(r) for r in roots if os.path.isdir(r)]
@@ -214,7 +218,14 @@ class ScannerWorker(QThread):
         self.files_dir = files_dir
         self.fx_only = fx_only
         self.read_thumbs = read_thumbs
+        self.auto_categorize_ue = auto_categorize_ue
         self._seen = set()
+        # Per-scan caches so we don't re-walk the tree for every file in a
+        # project (all files under one Content/ share the same .uproject).
+        self._uproj_cache = {}     # dir -> UEProject | None
+        self._folder_cache = {}    # folder name -> folder id
+        self._ue_folders = set()   # folder names created/used this scan
+        self._ue_categorized = 0   # assets auto-assigned to a UE project folder
 
     def _unique_copy_path(self, src):
         base = os.path.basename(src)
@@ -231,6 +242,31 @@ class ScannerWorker(QThread):
                 return cand
             i += 1
 
+    def _maybe_categorize(self, db, f):
+        """Auto-assign *f* to a UE-project folder when it lives in one.
+
+        Looks the project up with caching (all files under one Content/ share
+        the same .uproject), creates/retrieves the folder idempotently, and
+        links the asset. No-op when the file is not inside a UE project.
+        """
+        if not self.auto_categorize_ue:
+            return
+        d = os.path.dirname(f)
+        proj = self._uproj_cache.get(d, _MISSING)
+        if proj is _MISSING:
+            proj = detect_ue_project(f)
+            self._uproj_cache[d] = proj
+        if proj is None:
+            return
+        fname = project_folder_name(proj)
+        fid = self._folder_cache.get(fname)
+        if fid is None:
+            fid = db.ensure_folder(fname, path=proj.uproject_path, virtual=1)
+            self._folder_cache[fname] = fid
+            self._ue_folders.add(fname)
+        db.add_asset_to_folder(f, fid)
+        self._ue_categorized += 1
+
     def run(self):
         # SQLite connections cannot be shared across threads. Create a fresh
         # connection inside the worker thread. Skip the startup backup (the
@@ -243,7 +279,8 @@ class ScannerWorker(QThread):
         if total == 0:
             self.finished.emit({"total": 0, "niagara": 0, "cascade": 0,
                                  "unknown": 0, "skipped": 0,
-                                 "roots": len(self.roots), "sources": []})
+                                 "roots": len(self.roots), "sources": [],
+                                 "ue_folders": [], "ue_categorized": 0})
             return
 
         niagara = cascade = unknown = skipped = 0
@@ -324,6 +361,7 @@ class ScannerWorker(QThread):
                     has_thumb=has_thumb, tier=tier)
                 db.upsert_asset(a)
                 scanned_sources.append(f)
+                self._maybe_categorize(db, f)
 
                 if t == TYPE_NIAGARA:
                     niagara += 1
@@ -345,4 +383,6 @@ class ScannerWorker(QThread):
             "total": total, "niagara": niagara, "cascade": cascade,
             "unknown": unknown, "skipped": skipped, "roots": len(self.roots),
             "sources": scanned_sources, "errors": errors,
+            "ue_folders": sorted(self._ue_folders),
+            "ue_categorized": self._ue_categorized,
         })

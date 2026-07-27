@@ -590,6 +590,19 @@ def export_to_fxpack(assets: List, out_path: str,
             "source": "fxpack",
             "deps": dep_names,
         }
+        # Record the source UE project (if any) so an .fxpack imported on
+        # another machine can recreate the same auto-category. Detection runs
+        # on the asset's real on-disk path at export time.
+        try:
+            from app.ue_project import detect_ue_project, project_folder_name
+            _proj = detect_ue_project(asset.source_path)
+            if _proj is not None:
+                entry["source_project"] = _proj.name
+                entry["engine_version"] = _proj.engine_label
+                entry["uproject_path"] = _proj.uproject_path
+                entry["_ue_folder"] = project_folder_name(_proj)
+        except Exception:
+            pass
         manifest_assets.append(entry)
         packaged += 1
         if log_callback:

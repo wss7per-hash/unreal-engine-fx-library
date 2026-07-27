@@ -183,6 +183,7 @@ TRANSLATIONS = {
         # FX-only import / open-source actions / render state
         "import_fx_only": "仅导入 FX 特效（跳过未知类型）",
         "skipped_n": "跳过 {n} 个非特效文件",
+        "cat_ue_auto": "自动归类到 UE 工程：{n} 个资源 → {folders}",
         "open_location_btn": "打开所在文件夹",
         "copy_path_btn": "复制路径",
         "open_in_ue_btn": "在 UE 中打开",
@@ -518,6 +519,7 @@ TRANSLATIONS = {
         # FX-only import / open-source actions / render state
         "import_fx_only": "Import FX only (skip unknown types)",
         "skipped_n": "Skipped {n} non-FX files",
+        "cat_ue_auto": "Auto-categorized into UE project(s): {n} asset(s) -> {folders}",
         "open_location_btn": "Open Location",
         "copy_path_btn": "Copy Path",
         "open_in_ue_btn": "Open in UE",

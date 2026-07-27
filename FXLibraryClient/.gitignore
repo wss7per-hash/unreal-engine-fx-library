@@ -8,6 +8,9 @@ version_info.txt
 # Stale standalone exe left over from v0.1
 FXLibraryClient.v.0.1.exe
 
+# Built/standalone executables (source repo — keep binaries out of git)
+*.exe
+
 # Python caches
 __pycache__/
 *.pyc

@@ -1608,6 +1608,84 @@ try:
     except Exception as e:
         bad("smart_chip_toggle", "exc %s" % e)
 
+    # ROUND-13: auto-categorize by UE project on import/scan.
+    #   * detect_ue_project parses .uproject + EngineAssociation -> name + engine label
+    #   * project_folder_name embeds the engine version in brackets
+    #   * non-UE files (no .uproject ancestor) -> None (no auto category)
+    #   * Database.ensure_folder is idempotent (same name+parent -> same id)
+    try:
+        import os as _os
+        import tempfile as _tf
+        import json as _json
+        from app.ue_project import detect_ue_project, project_folder_name
+        from app.database import Database
+
+        _tmp = _tf.mkdtemp(prefix="qa_ue_")
+        _proj_dir = _os.path.join(_tmp, "MyProj")
+        _content = _os.path.join(_proj_dir, "Content", "FX")
+        _os.makedirs(_content, exist_ok=True)
+        _uasset = _os.path.join(_content, "NS_Test.uasset")
+        with open(_uasset, "wb") as _f:
+            _f.write(b"\x00\x01")
+        _up = _os.path.join(_proj_dir, "MyProj.uproject")
+        with open(_up, "w", encoding="utf-8") as _f:
+            _json.dump({"FileVersion": 3, "EngineAssociation": "5.4",
+                        "Category": "", "Description": ""}, _f)
+
+        _p = detect_ue_project(_uasset)
+        if _p is None:
+            bad("ue_detect_version", "detect_ue_project returned None for a UE asset")
+        elif (_p.name == "MyProj" and _p.engine_label == "UE 5.4"
+              and _p.uproject_path == _up):
+            ok("ue_detect_version",
+               "detected name=%s engine=%s" % (_p.name, _p.engine_label))
+        else:
+            bad("ue_detect_version",
+                "unexpected %r (name=%s engine=%s)" % (_p, _p.name, _p.engine_label))
+
+        _fname = project_folder_name(_p) if _p else ""
+        if _fname == "MyProj [UE 5.4]":
+            ok("ue_folder_name", "folder name embeds engine version: %r" % _fname)
+        else:
+            bad("ue_folder_name", "folder name wrong: %r" % _fname)
+
+        # GUID engine association -> custom build label (CI has no such key)
+        with open(_up, "w", encoding="utf-8") as _f:
+            _json.dump({"EngineAssociation": "abcdef0123456789abcdef01"}, _f)
+        _p2 = detect_ue_project(_uasset)
+        if _p2 is not None and _p2.engine_label == "UE 自定义版":
+            ok("ue_detect_guid", "GUID association -> custom label (%s)" % _p2.engine_label)
+        else:
+            bad("ue_detect_guid", "GUID association not resolved: %r" % (_p2,))
+
+        # Non-UE file: a file with no .uproject ancestor -> None
+        _nonue = _os.path.join(_tmp, "plain.txt")
+        with open(_nonue, "w") as _f:
+            _f.write("x")
+        _pn = detect_ue_project(_nonue)
+        if _pn is None:
+            ok("ue_detect_none", "non-UE file -> no project (no auto-category)")
+        else:
+            bad("ue_detect_none", "expected None for non-UE file, got %r" % (_pn,))
+
+        # ensure_folder idempotency + asset linking on a temp DB
+        _dbpath = _os.path.join(_tmp, "qa_ue_lib.db")
+        _db = Database(_dbpath)
+        _id1 = _db.ensure_folder("MyProj [UE 5.4]", path=_up, virtual=1)
+        _id2 = _db.ensure_folder("MyProj [UE 5.4]", path=_up, virtual=1)
+        if _id1 == _id2 and _id1 > 0:
+            ok("ue_folder_idempotent", "ensure_folder returns same id on repeat (%d)" % _id1)
+        else:
+            bad("ue_folder_idempotent", "ids differ: %r vs %r" % (_id1, _id2))
+        _db.add_asset_to_folder(_uasset, _id1)
+        _linked = _db.get_folder_assets(_id1)
+        if _uasset in _linked:
+            ok("ue_folder_link", "asset linked to UE project folder")
+        else:
+            bad("ue_folder_link", "asset not linked: %r" % _linked)
+    except Exception as e:
+        bad("ue_detect_version", "exc %s" % e)
+
     log("=== REPORT ===")
     fails = [r for r in results if r[0] == "FAIL"]
     passes = [r for r in results if r[0] == "PASS"]

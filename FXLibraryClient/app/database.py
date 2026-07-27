@@ -510,6 +510,30 @@ class Database:
         cols = ["id", "parent_id", "name", "path", "virtual", "created_at"]
         return [dict(zip(cols, r)) for r in cur.fetchall()]
 
+    def ensure_folder(self, name, parent_id=None, path=None, virtual=1) -> int:
+        """Get-or-create a folder by (name, parent_id).
+
+        Returns the existing folder id when one with the same name and parent
+        already exists, otherwise creates it and returns the new id. Used for
+        idempotent auto-categorization (e.g. grouping assets by UE project).
+        """
+        row = self.conn.execute(
+            "SELECT id FROM folders WHERE name=? AND (parent_id IS ? OR parent_id=?)",
+            (name, parent_id, parent_id)).fetchone()
+        if row:
+            fid = row[0]
+            # Backfill the project path when it was previously unknown.
+            if path:
+                try:
+                    self.conn.execute(
+                        "UPDATE folders SET path=? WHERE id=? AND (path IS NULL OR path='')",
+                        (path, fid))
+                    self.conn.commit()
+                except Exception:
+                    pass
+            return fid
+        return self.add_folder(name, parent_id=parent_id, path=path, virtual=virtual)
+
     def rename_folder(self, folder_id, name):
         self.conn.execute("UPDATE folders SET name=? WHERE id=?", (name, folder_id))
         self.conn.commit()
