@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS fx_assets (
     imported_at  TEXT,
     source       TEXT,
     project_path TEXT,
+    engine_version TEXT,
     health       TEXT,
     tier         INTEGER,
     deps         TEXT,
@@ -169,6 +170,18 @@ class Database:
                 self.conn.commit()
             except Exception:
                 pass
+
+        # Add the engine_version column if missing. Stores the detected UE
+        # engine label (e.g. "UE 5.4") for assets found inside a UE project,
+        # so the grid can show it on the thumbnail without re-detecting.
+        cols = [r[1] for r in self.conn.execute("PRAGMA table_info(fx_assets)")]
+        if "engine_version" not in cols:
+            try:
+                self.conn.execute(
+                    "ALTER TABLE fx_assets ADD COLUMN engine_version TEXT")
+                self.conn.commit()
+            except Exception:
+                pass
             try:
                 import os as _os
                 import tempfile
@@ -267,11 +280,12 @@ class Database:
         self.conn.execute(
             "INSERT OR REPLACE INTO fx_assets "
             "(source_path,name,type,class_name,stored_path,thumb_path,tags,"
-            "favorite,rating,note,size,imported_at,source,project_path,health,tier,deps,blueprint,deleted,has_thumb) "
-            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "favorite,rating,note,size,imported_at,source,project_path,engine_version,health,tier,deps,blueprint,deleted,has_thumb) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (a.source_path, a.name, a.type, a.class_name, a.stored_path,
              a.thumb_path, tags, int(favorite), rating, note, a.size,
-             a.imported_at, a.source, a.project_path, a.health, a.tier, deps,
+             a.imported_at, a.source, a.project_path, a.engine_version,
+             a.health, a.tier, deps,
              int(a.blueprint), int(deleted),
              int(getattr(a, "has_thumb", False))))
         self.conn.commit()
@@ -291,6 +305,17 @@ class Database:
         sidebar filters."""
         self.conn.execute("UPDATE fx_assets SET has_thumb=? WHERE source_path=?",
                           (1 if has else 0, source_path))
+
+    def set_engine_version(self, source_path, version: str):
+        """Persist the detected UE engine label (e.g. 'UE 5.4') for an asset.
+
+        Stored so the grid can render it on the thumbnail without re-running
+        UE-project detection. Empty string clears it (non-UE asset).
+        """
+        self.conn.execute(
+            "UPDATE fx_assets SET engine_version=? WHERE source_path=?",
+            (version or "", source_path))
+        self.conn.commit()
         self.conn.commit()
 
     def set_tier(self, source_path, tier: int):
@@ -361,7 +386,7 @@ class Database:
     def get_assets(self, type=None, fav_only=False, tag=None, q=None,
                    blueprint=None, include_deleted=False) -> List[FXAsset]:
         sql = ("SELECT source_path,name,type,class_name,stored_path,thumb_path,tags,"
-               "favorite,rating,note,size,imported_at,source,project_path,health,tier,deps,blueprint,deleted,has_thumb "
+               "favorite,rating,note,size,imported_at,source,project_path,engine_version,health,tier,deps,blueprint,deleted,has_thumb "
                "FROM fx_assets WHERE 1=1")
         args = []
         if not include_deleted:
@@ -388,14 +413,14 @@ class Database:
         """Return all soft-deleted assets."""
         cur = self.conn.execute(
             "SELECT source_path,name,type,class_name,stored_path,thumb_path,tags,"
-            "favorite,rating,note,size,imported_at,source,project_path,health,tier,deps,blueprint,deleted,has_thumb "
+            "favorite,rating,note,size,imported_at,source,project_path,engine_version,health,tier,deps,blueprint,deleted,has_thumb "
             "FROM fx_assets WHERE deleted=1 ORDER BY name COLLATE NOCASE")
         return self._rows_to_assets(cur.fetchall())
 
     def get_asset(self, source_path) -> Optional[FXAsset]:
         cur = self.conn.execute(
             "SELECT source_path,name,type,class_name,stored_path,thumb_path,tags,"
-            "favorite,rating,note,size,imported_at,source,project_path,health,tier,deps,blueprint,deleted,has_thumb "
+            "favorite,rating,note,size,imported_at,source,project_path,engine_version,health,tier,deps,blueprint,deleted,has_thumb "
             "FROM fx_assets WHERE source_path=?", (source_path,))
         rows = cur.fetchall()
         return self._rows_to_assets(rows)[0] if rows else None
@@ -466,18 +491,24 @@ class Database:
         return self.conn.execute("SELECT COUNT(*) FROM fx_assets").fetchone()[0]
 
     def _rows_to_assets(self, rows) -> List[FXAsset]:
+        # Column order must match the SELECT in get_assets/get_trash/get_asset:
+        # 0 source_path, 1 name, 2 type, 3 class_name, 4 stored_path,
+        # 5 thumb_path, 6 tags, 7 favorite, 8 rating, 9 note, 10 size,
+        # 11 imported_at, 12 source, 13 project_path, 14 engine_version,
+        # 15 health, 16 tier, 17 deps, 18 blueprint, 19 deleted, 20 has_thumb
         out = []
         for r in rows:
-            deps = json.loads(r[16]) if r[16] else []
+            deps = json.loads(r[17]) if r[17] else []
             out.append(FXAsset(
                 source_path=r[0], name=r[1], type=r[2] or "Unknown",
                 class_name=r[3] or "", stored_path=r[4], thumb_path=r[5],
                 tags=r[6] or "", favorite=bool(r[7]), rating=r[8] or 0,
                 note=r[9] or "", size=r[10] or 0, imported_at=r[11] or "",
                 source=r[12] or "scan", project_path=r[13] or "",
-                health=r[14] or "ok", tier=r[15] or 1, deps=deps,
-                blueprint=bool(r[17]), deleted=bool(r[18]),
-                has_thumb=bool(r[19])))
+                engine_version=r[14] or "",
+                health=r[15] or "ok", tier=r[16] or 1, deps=deps,
+                blueprint=bool(r[18]), deleted=bool(r[19]),
+                has_thumb=bool(r[20])))
         return out
 
     # ---------- fxpacks ----------

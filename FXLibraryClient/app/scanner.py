@@ -224,8 +224,9 @@ class ScannerWorker(QThread):
         # project (all files under one Content/ share the same .uproject).
         self._uproj_cache = {}     # dir -> UEProject | None
         self._folder_cache = {}    # folder name -> folder id
-        self._ue_folders = set()   # folder names created/used this scan
+        self._ue_folders = set()   # folder names created/used this scan (UE + non-UE)
         self._ue_categorized = 0   # assets auto-assigned to a UE project folder
+        self._auto_categorized = 0  # assets auto-assigned to ANY auto folder
 
     def _unique_copy_path(self, src):
         base = os.path.basename(src)
@@ -242,12 +243,33 @@ class ScannerWorker(QThread):
                 return cand
             i += 1
 
-    def _maybe_categorize(self, db, f):
-        """Auto-assign *f* to a UE-project folder when it lives in one.
+    def _root_for(self, f):
+        """Return the scan root that contains *f* — i.e. the folder the user
+        picked to import from. When several roots match, the most specific
+        (longest path) wins. Falls back to the file's immediate parent dir.
+        """
+        af = os.path.abspath(f)
+        best = None
+        for r in self.roots:
+            ar = os.path.abspath(r)
+            if af == ar or af.startswith(ar + os.sep):
+                if best is None or len(ar) > len(best):
+                    best = ar
+        if best:
+            return best
+        return os.path.dirname(af)
 
-        Looks the project up with caching (all files under one Content/ share
-        the same .uproject), creates/retrieves the folder idempotently, and
-        links the asset. No-op when the file is not inside a UE project.
+    def _maybe_categorize(self, db, f, a=None):
+        """Auto-assign *f* to a category based on where it lives.
+
+        - Inside a UE project: category = "<ProjectName> [UE x.y]"; the asset's
+          ``engine_version`` is recorded (e.g. "UE 5.4") for the thumbnail badge.
+        - Outside any UE project: category = the name of the selected scan
+          folder that contains the file, so every imported file lands in a
+          folder named after its source. ``engine_version`` is left empty.
+
+        Folders are created idempotently (re-scanning the same source never
+        duplicates a category).
         """
         if not self.auto_categorize_ue:
             return
@@ -256,16 +278,28 @@ class ScannerWorker(QThread):
         if proj is _MISSING:
             proj = detect_ue_project(f)
             self._uproj_cache[d] = proj
-        if proj is None:
-            return
-        fname = project_folder_name(proj)
+        if proj is not None:
+            fname = project_folder_name(proj)
+            path = proj.uproject_path
+            engine = proj.engine_label
+            self._ue_categorized += 1
+        else:
+            root = self._root_for(f)
+            fname = os.path.basename(root) or os.path.basename(d)
+            path = root
+            engine = ""
+        # Record the engine version on the asset (drives the thumbnail badge).
+        if a is not None:
+            a.engine_version = engine
+            db.set_engine_version(f, engine)
+        # Idempotent folder creation + link.
         fid = self._folder_cache.get(fname)
         if fid is None:
-            fid = db.ensure_folder(fname, path=proj.uproject_path, virtual=1)
+            fid = db.ensure_folder(fname, path=path, virtual=1)
             self._folder_cache[fname] = fid
             self._ue_folders.add(fname)
         db.add_asset_to_folder(f, fid)
-        self._ue_categorized += 1
+        self._auto_categorized += 1
 
     def run(self):
         # SQLite connections cannot be shared across threads. Create a fresh
@@ -361,7 +395,7 @@ class ScannerWorker(QThread):
                     has_thumb=has_thumb, tier=tier)
                 db.upsert_asset(a)
                 scanned_sources.append(f)
-                self._maybe_categorize(db, f)
+                self._maybe_categorize(db, f, a)
 
                 if t == TYPE_NIAGARA:
                     niagara += 1
@@ -385,4 +419,5 @@ class ScannerWorker(QThread):
             "sources": scanned_sources, "errors": errors,
             "ue_folders": sorted(self._ue_folders),
             "ue_categorized": self._ue_categorized,
+            "auto_categorized": self._auto_categorized,
         })

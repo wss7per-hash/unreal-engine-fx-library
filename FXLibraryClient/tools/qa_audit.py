@@ -1686,6 +1686,61 @@ try:
     except Exception as e:
         bad("ue_detect_version", "exc %s" % e)
 
+    # ROUND-14: engine_version persistence + non-UE auto-category naming.
+    #   * FXAsset.engine_version round-trips through upsert_asset / get_asset
+    #   * set_engine_version('') clears it (non-UE asset)
+    #   * get_assets() 21-column SELECT returns engine_version
+    #   * non-UE import creates a category named after the selected folder
+    try:
+        import os as _os
+        import tempfile as _tf
+        from app.database import Database
+        from app.models import FXAsset
+
+        _tmp = _tf.mkdtemp(prefix="qa_engv_")
+        _dbpath = _os.path.join(_tmp, "qa_engv_lib.db")
+        _db = Database(_dbpath)
+
+        _a = FXAsset(source_path=_os.path.join(_tmp, "NS_X.uasset"),
+                      name="NS_X", type="Niagara", engine_version="UE 5.4")
+        _db.upsert_asset(_a)
+        _got = _db.get_asset(_a.source_path)
+        if _got is not None and _got.engine_version == "UE 5.4":
+            ok("engine_version_roundtrip",
+               "engine_version persisted (%s)" % _got.engine_version)
+        else:
+            bad("engine_version_roundtrip",
+                "got %r" % (_got.engine_version if _got else None))
+
+        _db.set_engine_version(_a.source_path, "")
+        _got2 = _db.get_asset(_a.source_path)
+        if _got2 is not None and _got2.engine_version == "":
+            ok("engine_version_clear", "set_engine_version('') clears it")
+        else:
+            bad("engine_version_clear",
+                "got %r" % (_got2.engine_version if _got2 else None))
+
+        _all = _db.get_assets()
+        if _all and _all[0].engine_version == "":
+            ok("engine_version_select", "get_assets() returns engine_version")
+        else:
+            bad("engine_version_select",
+                "get_assets engine_version mismatch: %r"
+                % (_all[0].engine_version if _all else None))
+
+        # non-UE auto-category naming = basename of the selected scan folder
+        _root = _os.path.join(_tmp, "MySourceFolder")
+        _os.makedirs(_root, exist_ok=True)
+        _db.ensure_folder(_os.path.basename(_root), path=_root, virtual=1)
+        _names = [f["name"] for f in _db.get_folders()]
+        if "MySourceFolder" in _names:
+            ok("nonue_folder_name",
+               "non-UE category named after folder: %r" % _names)
+        else:
+            bad("nonue_folder_name", "folder names: %r" % _names)
+    except Exception as e:
+        bad("engine_version_roundtrip", "exc %s" % e)
+
     log("=== REPORT ===")
     fails = [r for r in results if r[0] == "FAIL"]
     passes = [r for r in results if r[0] == "PASS"]

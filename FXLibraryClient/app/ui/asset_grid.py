@@ -302,6 +302,22 @@ class AssetCard(QWidget):
         self.thumb.setAlignment(Qt.AlignCenter)
         self._set_thumb_pixmap()
 
+        # engine version badge (bottom-right) — only for assets detected
+        # inside a UE project. Mirrors the tier/fav overlay pattern. The
+        # semi-transparent dark pill stays legible over any thumbnail.
+        self.engine_badge = QLabel(self.thumb)
+        self.engine_badge.setObjectName("cardengine")
+        self.engine_badge.setText(getattr(self.asset, "engine_version", "") or "")
+        self.engine_badge.setStyleSheet(
+            "background: rgba(15,23,42,0.72); color:#ffffff; "
+            "border-radius:6px; padding:2px 6px; "
+            "font-size:11px; font-weight:600;")
+        self.engine_badge.adjustSize()
+        self.engine_badge.move(
+            max(2, self._thumb_w - self.engine_badge.width() - 8),
+            max(2, self._thumb_h - self.engine_badge.height() - 8))
+        self.engine_badge.setVisible(bool(getattr(self.asset, "engine_version", "")))
+
         if self.view_mode == "list":
             v = QHBoxLayout(self)
         else:

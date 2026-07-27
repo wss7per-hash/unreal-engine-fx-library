@@ -2450,9 +2450,10 @@ class MainWindow(QMainWindow):
             if data.get("skipped", 0):
                 self.log.append(tr("skipped_n", n=data["skipped"]))
             ue_cats = data.get("ue_categorized", 0)
-            if ue_cats:
+            auto_cats = data.get("auto_categorized", 0)
+            if auto_cats:
                 folders = ", ".join(data.get("ue_folders", []))
-                self.log.append(tr("cat_ue_auto", n=ue_cats, folders=folders))
+                self.log.append(tr("cat_ue_auto", n=auto_cats, ue=ue_cats, folders=folders))
             self._reload_library()
             # ScannerWorker already extracts embedded thumbnails locally; never
             # auto-launch UnrealEditor (user opted for pure-Python reading).
@@ -2797,9 +2798,13 @@ class MainWindow(QMainWindow):
                     tags=item.get("tags", ""), rating=item.get("rating", 0),
                     note=item.get("note", ""), size=item.get("size", 0),
                     imported_at=item.get("imported_at", ""), source="fxpack",
+                    engine_version=item.get("engine_version", ""),
                     has_thumb=bool(thumb_dst))
                 self.db.upsert_asset(a)
                 imported += 1
+                # Persist engine version so the thumbnail badge renders on
+                # fxpack-imported assets too (set on a after upsert above).
+                self.db.set_engine_version(dst, a.engine_version)
                 # Re-create the source UE project category when the pack
                 # recorded one (so a pack moved to another machine keeps its
                 # auto-grouping). Uses the same folder name as the scan path.

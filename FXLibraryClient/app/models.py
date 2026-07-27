@@ -30,6 +30,7 @@ class FXAsset:
     imported_at: str = ""            # ISO timestamp
     source: str = "scan"             # "scan" | "fxpack"
     project_path: str = ""           # UE project used to render the thumbnail (optional)
+    engine_version: str = ""         # detected UE engine label, e.g. "UE 5.4" ("" = not in a UE project)
     health: str = "ok"               # "ok" | "warn" | "bad"
     tier: int = 1                    # 1=engine 2=peak 3=manual
     deps: List[str] = field(default_factory=list)
