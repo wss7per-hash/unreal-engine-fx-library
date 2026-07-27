@@ -644,7 +644,9 @@ class MainWindow(QMainWindow):
             if tooltip:
                 chip.setToolTip(tooltip)
             chip.setChecked(self._current_view == view_key)
-            chip.clicked.connect(lambda _checked, k=view_key: self._set_view(k))
+            chip.clicked.connect(lambda checked, k=view_key: (
+                self._set_view(k) if checked else self._clear_smart_filter()
+            ))
             return _place_widget(chip, CHIP_H)
 
         # --- Smart-filter chips: thumbnails / favorites / untagged ---
@@ -720,8 +722,14 @@ class MainWindow(QMainWindow):
                 chip.setChecked(t == self._active_tag)
             except Exception:
                 pass
-        for k in ("has_thumb", "no_thumb", "fav"):
-            chip = getattr(self, "nav_" + k, None)
+        # Map view key -> chip attribute name. NOTE: the chip attributes are
+        # `nav_thumb` / `nav_nothumb` / `nav_fav` (not `nav_has_thumb` /
+        # `nav_no_thumb`), so the previous `getattr(self, "nav_" + k)` lookup
+        # silently missed nav_thumb and nav_nothumb, leaving them stuck
+        # checked after the user switched to another chip.
+        _smart_chip_attr = {"has_thumb": "nav_thumb", "no_thumb": "nav_nothumb", "fav": "nav_fav"}
+        for k, attr in _smart_chip_attr.items():
+            chip = getattr(self, attr, None)
             if chip is not None:
                 try:
                     chip.setChecked(self._current_view == k)
@@ -2047,6 +2055,20 @@ class MainWindow(QMainWindow):
         self._refresh_grid()
         # Update batch bar for trash view
         self._on_selection_changed(len(self.grid._selected))
+
+    def _clear_smart_filter(self):
+        """Clear the sidebar smart-filter (has_thumb / no_thumb / fav) without
+        disturbing the current folder / category / tag selection.
+
+        Used by the three sidebar chips so that clicking an already-active
+        chip turns it OFF and removes its filter, while keeping the user
+        exactly where they are in the folder/tag tree.
+        """
+        if self._current_view == "all":
+            return
+        self._current_view = "all"
+        self._update_nav_checked()
+        self._refresh_grid()
 
     def _set_cat(self, cat):
         if self._current_cat == cat:

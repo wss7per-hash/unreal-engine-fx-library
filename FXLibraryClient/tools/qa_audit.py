@@ -1533,6 +1533,81 @@ try:
     except Exception as e:
         bad("sidebar_no_leak", "exc %s" % e)
 
+    # ROUND-12: sidebar smart-filter chips (has_thumb / no_thumb / fav) must
+    # toggle off when clicked a second time, and switching between chips must
+    # keep them mutually exclusive. Regression guard for:
+    #   * the chip click handler branches on Qt's new `checked` state
+    #   * _update_nav_checked's chip lookup (used to miss nav_thumb /
+    #     nav_nothumb because it looked up "nav_has_thumb" / "nav_no_thumb")
+    #   * _clear_smart_filter preserving _current_folder / _current_cat /
+    #     _active_tag (only clears the view filter)
+    try:
+        _chips = {}
+        for _name, _key in (("thumb", "has_thumb"), ("nothumb", "no_thumb"), ("fav", "fav")):
+            _attr = "nav_" + _name
+            if hasattr(win, _attr) and getattr(win, _attr) is not None:
+                _chips[_key] = getattr(win, _attr)
+        if len(_chips) != 3:
+            bad("smart_chip_present", "expected 3 smart chips, found %d" % len(_chips))
+        else:
+            ok("smart_chip_present", "3 smart-filter chips present (has_thumb/no_thumb/fav)")
+            # 1) each chip: click ON, then click OFF (re-click must deselect + clear)
+            _toggle_ok = True
+            win._current_view = "all"
+            for _key, _chip in _chips.items():
+                _chip.click()  # ON
+                if not (_chip.isChecked() and win._current_view == _key):
+                    _toggle_ok = False
+                _chip.click()  # OFF (toggle)
+                if _chip.isChecked() or win._current_view != "all":
+                    _toggle_ok = False
+            if _toggle_ok:
+                ok("smart_chip_toggle",
+                   "all 3 chips toggle on/off cleanly (re-click deselects + clears filter)")
+            else:
+                bad("smart_chip_toggle",
+                    "one or more chips did not toggle off cleanly")
+            # 2) switching between chips: only the active one stays checked
+            win._current_view = "all"
+            _chips["has_thumb"].click()
+            _chips["no_thumb"].click()
+            if (win._current_view == "no_thumb"
+                    and _chips["no_thumb"].isChecked()
+                    and not _chips["has_thumb"].isChecked()
+                    and not _chips["fav"].isChecked()):
+                ok("smart_chip_switch_sync",
+                   "switching chips syncs checked state (only active chip checked)")
+            else:
+                bad("smart_chip_switch_sync",
+                    "sync broken: view=%s thumb=%s nothumb=%s fav=%s" % (
+                        win._current_view,
+                        _chips["has_thumb"].isChecked(),
+                        _chips["no_thumb"].isChecked(),
+                        _chips["fav"].isChecked()))
+            # 3) _clear_smart_filter must NOT touch folder/cat/tag
+            win._current_view = "has_thumb"
+            win._current_folder = "fake/folder"
+            win._current_cat = "fake_cat"
+            win._active_tag = "fake_tag"
+            win._clear_smart_filter()
+            if (win._current_view == "all"
+                    and win._current_folder == "fake/folder"
+                    and win._current_cat == "fake_cat"
+                    and win._active_tag == "fake_tag"):
+                ok("clear_smart_filter_keeps_context",
+                   "_clear_smart_filter preserves folder/cat/tag (only clears view)")
+            else:
+                bad("clear_smart_filter_keeps_context",
+                    "context disturbed: view=%s folder=%s cat=%s tag=%s" % (
+                        win._current_view, win._current_folder,
+                        win._current_cat, win._active_tag))
+            win._current_folder = None
+            win._current_cat = None
+            win._active_tag = None
+            win._current_view = "all"
+    except Exception as e:
+        bad("smart_chip_toggle", "exc %s" % e)
+
     log("=== REPORT ===")
     fails = [r for r in results if r[0] == "FAIL"]
     passes = [r for r in results if r[0] == "PASS"]
