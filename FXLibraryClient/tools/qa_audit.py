@@ -1741,6 +1741,121 @@ try:
     except Exception as e:
         bad("engine_version_roundtrip", "exc %s" % e)
 
+    # ROUND-15: one-shot engine_version backfill for legacy assets.
+    #   * iter_assets_for_engine_backfill yields rows with empty engine_version
+    #     (excluding deleted)
+    #   * backfill fills in via detect_ue_project → set_engine_version
+    #   * re-iter yields zero after the backfill completes
+    #   * a non-UE asset stays empty
+    try:
+        import os as _os
+        import tempfile as _tf
+        import shutil as _sh
+        from app.database import Database
+        from app.models import FXAsset
+        from app.ue_project import detect_ue_project
+        from app.scanner import EngineBackfillWorker
+        from PySide6.QtCore import QCoreApplication, QEventLoop, QThread
+
+        # Need a QApplication for QThread event loops; spin up an offscreen one.
+        _app = QCoreApplication.instance() or QCoreApplication(sys.argv)
+
+        _tmp = _tf.mkdtemp(prefix="qa_backfill_")
+        # UE project lives under its OWN sub-tree so find_uproject can't
+        # accidentally walk up into a "loose" sibling tree.
+        _proj_root = _os.path.join(_tmp, "UEProj")
+        _os.makedirs(_proj_root)
+        _proj = _os.path.join(_proj_root, "Proj.uproject")
+        with open(_proj, "w", encoding="utf-8") as _fh:
+            _fh.write('{"EngineAssociation": "5.4"}')
+        _content = _os.path.join(_proj_root, "Content", "FX")
+        _os.makedirs(_content, exist_ok=True)
+        # Loose tree lives in a SIBLING root so walking up from it can't
+        # find the .uproject above.
+        _loose_root = _os.path.join(_tmp, "LooseRoot", "LooseFolder")
+        _os.makedirs(_loose_root, exist_ok=True)
+        _ue_asset = _os.path.join(_content, "NS_Fire.uasset")
+        _nonue_asset = _os.path.join(_loose_root, "Loose1.uasset")
+        for p in (_ue_asset, _nonue_asset):
+            open(p, "wb").close()
+
+        _dbpath = _os.path.join(_tmp, "qa_backfill_lib.db")
+        _db = Database(_dbpath)
+
+        _a1 = FXAsset(source_path=_ue_asset, name="NS_Fire", type="Niagara")
+        _a1.engine_version = ""  # legacy: not populated
+        _db.upsert_asset(_a1)
+        _a2 = FXAsset(source_path=_nonue_asset, name="Loose1", type="Texture")
+        _a2.engine_version = ""
+        _db.upsert_asset(_a2)
+        # Also add a deleted asset to verify it's excluded.
+        _a3 = FXAsset(source_path=_os.path.join(_content, "DEL.uasset"),
+                      name="DEL", type="Niagara")
+        _a3.engine_version = ""
+        _db.upsert_asset(_a3)
+        _db.conn.execute("UPDATE fx_assets SET deleted=1 WHERE source_path=?",
+                         (_a3.source_path,))
+        # Simulate "legacy" rows: column was NULL at insert time. FXAsset's
+        # dataclass default is "" so upsert writes "" — we need to coerce the
+        # fixture to NULL for the backfill to pick them up (this matches
+        # what pre-feature assets actually look like in the user's DB).
+        _db.conn.execute(
+            "UPDATE fx_assets SET engine_version=NULL "
+            "WHERE source_path IN (?, ?, ?)",
+            (_ue_asset, _nonue_asset, _a3.source_path))
+        _db.conn.commit()
+
+        _needs = list(_db.iter_assets_for_engine_backfill())
+        if sorted(_needs) == sorted([_ue_asset, _nonue_asset]):
+            ok("backfill_iter_excludes_deleted",
+               "yielded %d undeleted, none deleted" % len(_needs))
+        else:
+            bad("backfill_iter_excludes_deleted",
+                "yielded %r" % sorted(_needs))
+
+        # Run worker thread (sync wait).
+        _w = EngineBackfillWorker(_dbpath)
+        _done = {"info": None, "loop": QEventLoop()}
+        _w.finished.connect(lambda info: (_done.update(info=info),
+                                          _done["loop"].quit()))
+        _w.start()
+        _done["loop"].exec()
+        info = _done["info"]
+        if info and info.get("filled") == 2 and info.get("ue") == 1 \
+                and info.get("missing") == 1 and not info.get("stopped"):
+            ok("backfill_worker_finished",
+               "filled=%d ue=%d missing=%d" % (
+                   info["filled"], info["ue"], info["missing"]))
+        else:
+            bad("backfill_worker_finished", "info=%r" % info)
+
+        _ue_got = _db.get_asset(_ue_asset)
+        _nonue_got = _db.get_asset(_nonue_asset)
+        if _ue_got and _ue_got.engine_version == "UE 5.4":
+            ok("backfill_fills_ue_asset", "got %s" % _ue_got.engine_version)
+        else:
+            bad("backfill_fills_ue_asset",
+                "got %r" % (_ue_got.engine_version if _ue_got else None))
+        if _nonue_got and _nonue_got.engine_version == "":
+            ok("backfill_leaves_nonue_empty", "non-UE stays empty")
+        else:
+            bad("backfill_leaves_nonue_empty",
+                "got %r" % (_nonue_got.engine_version if _nonue_got else None))
+
+        # Re-iter should now be empty (idempotent).
+        _needs2 = list(_db.iter_assets_for_engine_backfill())
+        if not _needs2:
+            ok("backfill_is_idempotent", "second iter is empty")
+        else:
+            bad("backfill_is_idempotent", "remaining %r" % _needs2)
+
+        _db.close()
+        _sh.rmtree(_tmp, ignore_errors=True)
+    except Exception as e:
+        import traceback as _tb
+        bad("backfill_iter_excludes_deleted",
+            "exc %s\n%s" % (e, _tb.format_exc()))
+
     log("=== REPORT ===")
     fails = [r for r in results if r[0] == "FAIL"]
     passes = [r for r in results if r[0] == "PASS"]

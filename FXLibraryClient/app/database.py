@@ -95,6 +95,18 @@ class Database:
         self.conn.commit()
         self._migrate()
 
+    def close(self):
+        """Release the SQLite connection (short-lived workers should call this
+        before exiting so the file handle isn't held until GC)."""
+        try:
+            self.conn.commit()
+        except Exception:
+            pass
+        try:
+            self.conn.close()
+        except Exception:
+            pass
+
     def _snapshot_backup(self, path):
         """Keep a single rolling .bak of the library as it was at launch."""
         try:
@@ -305,6 +317,21 @@ class Database:
         sidebar filters."""
         self.conn.execute("UPDATE fx_assets SET has_thumb=? WHERE source_path=?",
                           (1 if has else 0, source_path))
+
+    def iter_assets_for_engine_backfill(self):
+        """Yield source_paths whose engine_version was never populated, so the
+        scanner can re-detect their UE project on first launch. Deliberately
+        skips ``''`` (empty string), which means "checked, not a UE project"
+        and is the final desired state for non-UE assets.
+
+        Walks the actual table (no filesystem IO); keeps memory low.
+        """
+        cur = self.conn.execute(
+            "SELECT source_path FROM fx_assets "
+            "WHERE deleted=0 AND engine_version IS NULL "
+            "ORDER BY source_path")
+        for (sp,) in cur:
+            yield sp
 
     def set_engine_version(self, source_path, version: str):
         """Persist the detected UE engine label (e.g. 'UE 5.4') for an asset.

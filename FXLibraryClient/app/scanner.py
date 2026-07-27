@@ -421,3 +421,62 @@ class ScannerWorker(QThread):
             "ue_categorized": self._ue_categorized,
             "auto_categorized": self._auto_categorized,
         })
+
+
+class EngineBackfillWorker(QThread):
+    """One-shot worker that fills in ``engine_version`` for assets that were
+    imported before the feature existed. Walks the SQLite index (not the FS
+    tree), re-runs UE-project detection on each ``source_path``, and persists
+    the detected label so the grid can show the badge.
+
+    Safe to interrupt (sets ``_stop``); the main window should not block on it.
+    """
+    progress = Signal(int, int)            # done, total
+    finished = Signal(dict)                # {"filled", "scanned", "ue", "missing"}
+
+    def __init__(self, db_path: str):
+        super().__init__()
+        self.db_path = db_path
+        self._stop = False
+
+    def stop(self):
+        self._stop = True
+
+    def run(self):
+        from app.database import Database
+        db = Database(self.db_path, backup=False)
+        # Snapshot first so a concurrent import doesn't grow the set we walk.
+        rows = list(db.iter_assets_for_engine_backfill())
+        total = len(rows)
+        self.progress.emit(0, total)
+        # Per-directory cache: all assets under one Content/ share the same
+        # .uproject, no point re-walking for each file.
+        cache = {}
+        filled = ue_count = missing_count = 0
+        try:
+            for i, sp in enumerate(rows):
+                if self._stop:
+                    break
+                d = os.path.dirname(sp)
+                proj = cache.get(d)
+                if proj is None:
+                    proj = detect_ue_project(sp)
+                    cache[d] = proj
+                if proj is not None:
+                    label = proj.engine_label
+                    ue_count += 1
+                else:
+                    label = ""
+                    missing_count += 1
+                db.set_engine_version(sp, label)
+                filled += 1
+                # Throttle progress to avoid signal spam on huge libraries.
+                if (i + 1) % 10 == 0 or (i + 1) == total:
+                    self.progress.emit(i + 1, total)
+        finally:
+            db.close()
+        self.finished.emit({
+            "filled": filled, "scanned": total,
+            "ue": ue_count, "missing": missing_count,
+            "stopped": self._stop,
+        })

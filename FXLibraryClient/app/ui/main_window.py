@@ -32,7 +32,7 @@ from app import uasset_thumb
 from app.database import Database
 from app.models import FXAsset, FxPackEntry, TYPE_NIAGARA, TYPE_CASCADE
 from app.workers import BridgeWorker
-from app.scanner import ScannerWorker
+from app.scanner import ScannerWorker, EngineBackfillWorker
 from app import ue_export
 from app.ui.asset_grid import (AssetGrid, _crop_to_square, _placeholder,
                                  DEFAULT_CHIP, TYPE_CHIP, TIER_LABEL)
@@ -240,6 +240,7 @@ class MainWindow(QMainWindow):
         self.db = self._open_db()
         self.bridge_dir = self.cfg.get("ue_bridge_dir") or None
         self._active_worker = None
+        self._backfill_worker = None
         self._ue_available = False
         self._render_queue = []
         self._export_queue = []
@@ -266,6 +267,34 @@ class MainWindow(QMainWindow):
         self._refresh_ue_state()
         self._set_busy(False)
         self._reload_library()
+        self._start_engine_backfill()
+
+    def _start_engine_backfill(self):
+        """Kick off a one-shot background backfill of ``engine_version`` for
+        assets imported before the feature existed. Safe to call repeatedly
+        (a no-op when nothing needs filling)."""
+        try:
+            needs = sum(1 for _ in self.db.iter_assets_for_engine_backfill())
+        except Exception as e:
+            self.log.append(tr("backfill_probe_failed"), err=str(e))
+            return
+        if needs <= 0:
+            return
+        self._backfill_worker = EngineBackfillWorker(self._db_path)
+        self._backfill_worker.finished.connect(self._on_engine_backfill_done)
+        self._backfill_worker.start()
+        self.statusBar().showMessage(tr("backfill_started", n=needs))
+
+    def _on_engine_backfill_done(self, info):
+        """Reload the grid once the background backfill finishes so the new
+        ``engine_version`` values light up the thumbnail badges."""
+        self._backfill_worker = None
+        filled = info.get("filled", 0)
+        ue = info.get("ue", 0)
+        if filled > 0:
+            self._reload_library()
+            self.log.append(tr("backfill_done", n=filled, ue=ue))
+        self.statusBar().showMessage(tr("ready"))
 
     # ---------- shortcuts ----------
     def _install_shortcuts(self):
