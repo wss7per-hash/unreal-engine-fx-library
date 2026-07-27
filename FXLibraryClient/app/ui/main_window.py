@@ -41,6 +41,7 @@ from app.ui.settings_dialog import SettingsDialog
 from app.style import get_stylesheet, resolve_theme
 from app.i18n import tr, reset_language_cache
 from app.icons import icon, app_icon, type_glyph_pixmap
+from app.version import __version__ as _APP_VER
 
 CONFIG_DIR = os.path.join(os.path.expanduser("~"), ".fxlibrary")
 
@@ -225,7 +226,7 @@ class MainWindow(QMainWindow):
         # move/resize flawlessly and NO click can ever be swallowed.
         # We only darken the native title bar via the Windows DWM API so it
         # still matches the dark theme (see _apply_dark_title_bar).
-        self.setWindowTitle(tr("app_title"))
+        self.setWindowTitle("%s v%s" % (tr("app_title"), _APP_VER))
         self.setWindowIcon(app_icon())
         self.resize(1440, 900)
         self.setMinimumSize(1100, 700)
@@ -773,6 +774,10 @@ class MainWindow(QMainWindow):
                        self._auto_scan)
         menu.exec(self.lib_btn.mapToGlobal(QPoint(0, self.lib_btn.height())))
 
+    def _open_about(self):
+        from app.ui.about_dialog import AboutDialog
+        AboutDialog(self).exec()
+
     def _open_settings(self):
         from app.ui.settings_dialog import SettingsDialog
         from app.style import resolve_theme
@@ -1098,6 +1103,16 @@ class MainWindow(QMainWindow):
         self.btn_settings.clicked.connect(self._open_settings)
         self._round_button(self.btn_settings)
         tb_actions.addWidget(self.btn_settings)
+
+        # about button
+        self.btn_about = QPushButton()
+        self.btn_about.setObjectName("icon")
+        self.btn_about.setIcon(icon("info", size=18))
+        self.btn_about.setFixedSize(32, 32)
+        self.btn_about.setToolTip(tr("about_title"))
+        self.btn_about.clicked.connect(self._open_about)
+        self._round_button(self.btn_about)
+        tb_actions.addWidget(self.btn_about)
 
         tb_actions.addStretch(1)
 
@@ -1801,7 +1816,7 @@ class MainWindow(QMainWindow):
         self._retranslate_ui()
 
     def _retranslate_ui(self):
-        self.setWindowTitle(tr("app_title"))
+        self.setWindowTitle("%s v%s" % (tr("app_title"), _APP_VER))
         # search (lives in toolbar row 1 now)
         self.search.setPlaceholderText(tr("search_ph"))
         # toolbar (filters + selection controls; the Scan/Add button is top-left)
@@ -1837,6 +1852,8 @@ class MainWindow(QMainWindow):
         if hasattr(self, "nav_fav"):
             self.nav_fav.setText(" " + tr("favorites"))
         self.btn_add.setText(" " + tr("scan_dir"))
+        if hasattr(self, "btn_about"):
+            self.btn_about.setToolTip(tr("about_title"))
         if hasattr(self, "btn_read_thumbs"):
             self.btn_read_thumbs.setText(" " + tr("read_thumbs"))
             self.btn_read_thumbs.setToolTip(tr("read_thumbs_tip"))
@@ -3371,7 +3388,6 @@ def main():
     app.setStyle("Fusion")
     app.setWindowIcon(app_icon())
     win = MainWindow()
-    dbg("STARTUP build=2026-07-24T17:55 SET_ASSETS_DIAG=on "
-         "py=%s" % sys.version.split()[0])
+    dbg("STARTUP version=%s py=%s" % (_APP_VER, sys.version.split()[0]))
     win.show()
     sys.exit(app.exec())

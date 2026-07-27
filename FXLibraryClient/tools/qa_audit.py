@@ -1286,25 +1286,24 @@ try:
     else:
         bad("inspexp_tokenized", "inspector Export-to-UE button still uses inline setStyleSheet")
 
-    # ROUND-9: Tag-related sidebar organization
+    # ROUND-9 (amended 07-27): Tag-related sidebar organization
     #   "Uncategorized" was removed (dead filter — scanner always assigns type).
-    #   ALL sidebar filters (thumb/fav/notag/tags) are unified as #nav chips
+    #   "No tag" chip was ALSO removed on user request (commit 1e34f97) — it is
+    #   a pseudo-tag and must NOT reappear alongside real tags.
+    #   Remaining sidebar filters (thumb/fav/tags) are unified as #nav chips
     #   inside the tag browser — no separate nav_container or _nav_btn.
     has_unified_chips = ('_make_chip' in mw_src
                          and 'self.nav_thumb' in mw_src
-                         and 'self.nav_fav' in mw_src
-                         and 'self.nav_notag' in mw_src)
-    has_no_tag_in_flow = ('self.nav_notag' in mw_src
-                          and '_make_chip' in mw_src
-                          and '"no_tag"' in mw_src)
+                         and 'self.nav_fav' in mw_src)
+    has_notag_removed = ('self.nav_notag' not in mw_src)
     has_uncat_removed = ('self.nav_uncat' not in mw_src)
     has_nav_container_gone = ('_nav_btn(tr("has_thumb")' not in mw_src)
-    if has_unified_chips and has_no_tag_in_flow and has_uncat_removed and has_nav_container_gone:
+    if has_unified_chips and has_notag_removed and has_uncat_removed and has_nav_container_gone:
         ok("uncat_notag_reachable",
-           "All filters (thumb/fav/notag) unified as #nav chips; Uncategorized removed")
+           "Filters (thumb/fav) unified as #nav chips; Uncategorized & No-tag chips removed")
     else:
         bad("uncat_notag_reachable",
-             "Filters not unified as chips or Uncategorized still present")
+             "Filters not unified as chips, or Uncategorized/No-tag chip re-appeared")
 
     # ROUND-11: Windows-style 3 view modes (icons / list / details table)
     if 'self.view_combo' in mw_src and '("icons", tr("vm_icons"))' in mw_src \

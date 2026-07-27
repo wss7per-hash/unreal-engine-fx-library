@@ -47,6 +47,7 @@ _LINE = {
     "community": '<circle cx="9" cy="7" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-3 2.5-5 6-5s6 2 6 5"/><path d="M14 20c0-2 1.5-3.5 3.5-3.5s3.5 1.5 3.5 3.5"/>',
     "tag_manage": '<path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10"/><circle cx="7" cy="7" r="1.5"/><path d="M16 6h4M16 10h4" stroke-dasharray="1 2"/>',
     "terminal": '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8l4 4-4 4"/><path d="M12 16h6"/>',
+    "info": '<circle cx="12" cy="12" r="9"/><path d="M12 8h.01"/><path d="M12 11v6"/>',
 }
 
 # Type-specific glyphs used on card/hero placeholders (fill=none, stroke=#fff).

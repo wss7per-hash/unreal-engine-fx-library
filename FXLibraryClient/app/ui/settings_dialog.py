@@ -3,11 +3,12 @@
 from PySide6.QtWidgets import (QDialog, QFormLayout,
                                QVBoxLayout, QHBoxLayout,
                                QDialogButtonBox, QComboBox, QCheckBox,
-                               QLineEdit, QPushButton, QFileDialog)
+                               QLineEdit, QPushButton, QFileDialog, QLabel)
 from PySide6.QtCore import Qt
 
 from app import config as cfg
 from app.i18n import tr
+from app.version import __version__
 
 
 class SettingsDialog(QDialog):
@@ -70,7 +71,14 @@ class SettingsDialog(QDialog):
         layout.setContentsMargins(20, 20, 20, 20)
         layout.addLayout(form)
         layout.addStretch(1)
-        layout.addWidget(buttons)
+        ver_lbl = QLabel("FX Library v%s" % __version__)
+        ver_lbl.setStyleSheet("color: #8a8fa3;")
+        ver_lbl.setAlignment(Qt.AlignLeft)
+        bottom = QHBoxLayout()
+        bottom.addWidget(ver_lbl)
+        bottom.addStretch(1)
+        bottom.addWidget(buttons)
+        layout.addLayout(bottom)
 
     def _browse_ue(self):
         path, _ = QFileDialog.getOpenFileName(
