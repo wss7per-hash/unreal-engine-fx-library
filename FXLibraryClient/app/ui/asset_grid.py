@@ -254,6 +254,11 @@ class AssetCard(QWidget):
             self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         self.setCursor(Qt.PointingHandCursor)
         self._selected = False
+        # Make the card focusable so the FIRST click focuses it (and fires
+        # activation) instead of the OS/Qt eating the first click just to
+        # transfer focus away from a focused inspector text field. This is
+        # the standard remedy for "I have to click twice to open details".
+        self.setFocusPolicy(Qt.StrongFocus)
         self._build()
         self._setup_hover_lift()
         # Force fixed height to prevent overlapping — bypass Qt's adjustSize()
@@ -457,12 +462,15 @@ class AssetCard(QWidget):
     def set_selected(self, b):
         self._selected = b
         self.update()
-        # Deepen shadow on selection for tactile "lift" feedback
+        # Deepen the shadow on selection for a tactile "lift" — the card
+        # appears to raise / pop forward. (A true geometric scale isn't
+        # available for plain QWidget in PySide6, so we convey "slightly
+        # bigger" via the stronger lift + brighten wash drawn in paintEvent.)
         if hasattr(self, "_shadow"):
             if b:
-                self._shadow.setBlurRadius(22.0)
-                self._shadow.setYOffset(6.0)
-                col = QColor(99, 91, 255, 70) if self._theme == "light" else QColor(0, 0, 0, 150)
+                self._shadow.setBlurRadius(28.0)
+                self._shadow.setYOffset(9.0)
+                col = QColor(99, 91, 255, 90) if self._theme == "light" else QColor(0, 0, 0, 175)
                 self._shadow.setColor(col)
             else:
                 self._shadow.setBlurRadius(10.0)
@@ -512,7 +520,12 @@ class AssetCard(QWidget):
             if parent_grid:
                 parent_grid._shift_select_to(self.index)
         else:
-            # Normal click: select this card, deselect others
+            # Normal click: select this card, deselect others.
+            # Grab focus immediately so the first click focuses the card
+            # (and fires activation) rather than the OS/Qt consuming it just
+            # to move focus off a focused inspector text field — which is
+            # what previously forced users to click twice to see details.
+            self.setFocus(Qt.MouseFocusReason)
             parent_grid = self._find_grid()
             if parent_grid:
                 parent_grid._clear_selection(keep=self)
@@ -561,35 +574,38 @@ class AssetCard(QWidget):
 
     def paintEvent(self, e):
         super().paintEvent(e)
-        # Selection indicator: a small accent dot in the top-left corner,
-        # drawn directly in the card's own paintEvent so we don't have to
-        # rely on a separate QPushButton overlay (which previously rendered
-        # as a loud blue square and made the card look like it had two
-        # stacked borders).
-        if self._selected:
-            p = QPainter(self)
-            p.setRenderHint(QPainter.Antialiasing)
-            d = 12                 # dot diameter
-            m = 8                  # margin from corner
-            # Soft dark backdrop so the accent stays legible on any thumb
-            p.setBrush(QColor(15, 23, 42, 170))
-            p.setPen(Qt.NoPen)
-            p.drawEllipse(m, m, d, d)
-            # Accent ring + check inside
-            pen = QPen(QColor(self._sel_color))
-            pen.setWidthF(1.5)
-            p.setPen(pen)
-            p.setBrush(Qt.NoBrush)
-            p.drawEllipse(m + 0.75, m + 0.75, d - 1.5, d - 1.5)
-            p.setPen(QPen(QColor("#ffffff")))
-            p.setRenderHint(QPainter.Antialiasing)
-            cx, cy = m + d / 2, m + d / 2
-            check = QPainterPath()
-            check.moveTo(cx - 3.0, cy + 0.2)
-            check.lineTo(cx - 0.8, cy + 2.4)
-            check.lineTo(cx + 3.2, cy - 2.4)
-            p.drawPath(check)
-            p.end()
+        if not self._selected:
+            return
+        # New selection effect (replaces the old top-stripe + accent dot):
+        # a soft brighten wash over the whole card plus a single subtle
+        # accent ring. Combined with the animated enlarge/lift (see _apply_grow)
+        # this reads as "the card lights up and pops slightly" — no loud frame.
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing)
+        r = 16
+        # brighten wash (lighten the card surface on selection)
+        wash = 26 if self._theme == "light" else 18
+        p.setBrush(QColor(255, 255, 255, wash))
+        p.setPen(Qt.NoPen)
+        path = QPainterPath()
+        path.addRoundedRect(QRectF(self.rect()), r, r)
+        p.setClipPath(path)
+        p.drawRect(self.rect())
+        p.setClipping(False)
+        # subtle single accent ring (rounded) — the selection marker
+        pen = QPen(QColor(self._sel_color))
+        pen.setWidthF(1.6)
+        p.setPen(pen)
+        p.setBrush(Qt.NoBrush)
+        inset = 1.0
+        rr = QPainterPath()
+        rr.addRoundedRect(
+            QRectF(inset, inset,
+                   self.width() - 2 * inset,
+                   self.height() - 2 * inset),
+            r - 1, r - 1)
+        p.drawPath(rr)
+        p.end()
 
 
 # ---------------------------------------------------------------------------

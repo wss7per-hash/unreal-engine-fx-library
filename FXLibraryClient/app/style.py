@@ -481,16 +481,32 @@ AssetCard {{
     box-shadow: 0 1px 2px {shadow_sm};
 }}
 AssetCard:hover {{ border: 1px solid {border2}; box-shadow: 0 8px 20px {shadow_md}; }}
-/* Selected: subtle accent top stripe + tinted bg. No full-perimeter border
-   (that used to stack with the paintEvent border and read as two stacked
-   blue frames). The small accent dot is drawn in AssetCard.paintEvent. */
+/* Selected: tinted bg only. No top stripe / full-perimeter border — the
+   brighten wash + subtle accent ring + slight enlarge are drawn in
+   AssetCard.paintEvent / _apply_grow, so a QSS border would just read as a
+   loud frame again. */
 AssetCard[selected="true"] {{
-    border: 1px solid {border2};
     background: {card_sel};
-    border-top: 3px solid {accent};
-    border-top-left-radius: {{r_lg}};
-    border-top-right-radius: {{r_lg}};
+    border: 1px solid {border2};
     box-shadow: 0 12px 28px {shadow_lg};
+}}
+AssetCard:focus {{ outline: none; }}
+
+/* ---------- collapsible sidebar sections (filters / tags / folders) ---------- */
+QWidget#collheader {{
+    padding: 5px 4px;
+    border-radius: {r_sm};
+}}
+QWidget#collheader:hover {{ background: {panel2}; }}
+QLabel#collchev {{
+    color: {muted};
+    font-size: 11px;
+    qproperty-alignment: AlignCenter;
+}}
+QLabel#colltitle {{
+    font-weight: 700;
+    font-size: 12px;
+    color: {text};
 }}
 
 /* ---------- batch bar / lightbox / inspector frames ---------- */

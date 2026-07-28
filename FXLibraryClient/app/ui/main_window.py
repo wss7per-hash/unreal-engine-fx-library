@@ -213,6 +213,55 @@ class LightboxDialog(QDialog):
 
 
 # --------------------------------------------------------------------------
+# Collapsible sidebar section (click the header to expand/collapse).
+# --------------------------------------------------------------------------
+class CollapsibleSection(QWidget):
+    def __init__(self, title, content, extra=None, parent=None):
+        super().__init__(parent)
+        self._content = content
+        self._collapsed = False
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(0)
+
+        self._chev = QLabel("▾")           # ▾ expanded / ▸ collapsed
+        self._chev.setObjectName("collchev")
+        self._chev.setFixedWidth(14)
+        self._title = QLabel(title)
+        self._title.setObjectName("colltitle")
+
+        hdr = QHBoxLayout()
+        hdr.setContentsMargins(0, 0, 0, 0)
+        hdr.setSpacing(6)
+        hdr.addWidget(self._chev)
+        hdr.addWidget(self._title)
+        hdr.addStretch(1)
+        # extra widgets (e.g. a clear / new-folder button) live in the header
+        # but keep their own click behaviour — they don't toggle collapse.
+        if extra:
+            for w in extra:
+                hdr.addWidget(w)
+        self._header = QWidget()
+        self._header.setObjectName("collheader")
+        self._header.setLayout(hdr)
+        self._header.setCursor(Qt.PointingHandCursor)
+        self._header.mousePressEvent = lambda e: self.toggle()
+        lay.addWidget(self._header)
+        lay.addWidget(content, 1)
+
+    def toggle(self):
+        self.set_collapsed(not self._collapsed)
+
+    def set_collapsed(self, c):
+        self._collapsed = c
+        self._chev.setText("▸" if c else "▾")
+        if c:
+            self._content.hide()
+        else:
+            self._content.show()
+
+
+# --------------------------------------------------------------------------
 # Main window
 # --------------------------------------------------------------------------
 class MainWindow(QMainWindow):
@@ -509,23 +558,12 @@ class MainWindow(QMainWindow):
         outer.addWidget(hero)
         outer.addSpacing(12)
 
-        # ---- All sidebar filters (thumb/fav/tag) rendered as unified chips
-        #      inside the tag browser below — no separate nav_container needed. ----
-        outer.addWidget(self._build_tag_browser())
+        # ---- Filters / Tags / Folders as independently collapsible sections ----
+        self._build_tag_browser()
+        outer.addWidget(self.filter_section)
+        outer.addWidget(self.tag_section)
 
-        # Folders (Eagle-style user-created folders)
-        folder_frame = QWidget()
-        folder_frame.setObjectName("folderframe")
-        folder_layout = QVBoxLayout(folder_frame)
-        folder_layout.setContentsMargins(0, 0, 0, 0)
-        folder_layout.setSpacing(6)
-
-        # folder header with + new folder button
-        folder_header = QHBoxLayout()
-        folder_header.setSpacing(0)
-        folder_title = self._nav_title(tr("folders"))
-        folder_header.addWidget(folder_title)
-        folder_header.addStretch(1)
+        # Folders (Eagle-style user-created folders) — collapsible
         self.btn_new_folder = QPushButton()
         self.btn_new_folder.setObjectName("iconghost")
         self.btn_new_folder.setIcon(icon("plus", size=14))
@@ -534,12 +572,10 @@ class MainWindow(QMainWindow):
         self.btn_new_folder.setToolTip(tr("new_folder"))
         self.btn_new_folder.setCursor(Qt.PointingHandCursor)
         self.btn_new_folder.clicked.connect(self._create_virtual_folder)
-        folder_header.addWidget(self.btn_new_folder)
-        folder_layout.addLayout(folder_header)
-
         self.folder_tree = self._build_folder_tree()
-        folder_layout.addWidget(self.folder_tree, 1)
-        outer.addWidget(folder_frame, 1)
+        self.folder_section = CollapsibleSection(
+            tr("folders"), self.folder_tree, [self.btn_new_folder])
+        outer.addWidget(self.folder_section, 1)
 
         # ---- Trash pinned at bottom, separated by a divider so it reads as a footer ----
         outer.addSpacing(6)
@@ -562,19 +598,30 @@ class MainWindow(QMainWindow):
         self._refresh_sidebar_stats()
         return frame
 
-    def _build_tag_browser(self):
-        """Sidebar clickable tag cloud — click a tag to filter the grid."""
-        frame = QFrame()
-        frame.setObjectName("tagbrowser")
-        v = QVBoxLayout(frame)
-        v.setContentsMargins(0, 0, 0, 0)
-        v.setSpacing(6)
+    def _make_chip_scroll(self, widget):
+        """Build a chip scroll area that hosts a manually-positioned flow."""
+        scroll = QScrollArea()
+        scroll.setObjectName("tagscroll")
+        scroll.setWidgetResizable(False)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setWidget(widget)
+        return scroll
 
-        header = QHBoxLayout()
-        header.setSpacing(0)
-        title = self._nav_title(tr("filters"))
-        header.addWidget(title)
-        header.addStretch(1)
+    def _build_tag_browser(self):
+        """Build the two collapsible sidebar sections — Filters (smart-filter
+        chips) and Tags (real DB tags) — and store them on self so _build_sidebar
+        can lay them out. Sections are: self.filter_section / self.tag_section.
+        """
+        # ---- Filters content (smart-filter chips) ----
+        self.filter_flow_widget = QWidget()
+        self.filter_scroll = self._make_chip_scroll(self.filter_flow_widget)
+        self.filter_section = CollapsibleSection(tr("filters"), self.filter_scroll, None)
+
+        # ---- Tags content (real DB tags) ----
+        self.tag_flow_widget = QWidget()
+        self.tag_scroll = self._make_chip_scroll(self.tag_flow_widget)
         self.tag_clear_btn = QPushButton()
         self.tag_clear_btn.setObjectName("iconghost")
         self.tag_clear_btn.setIcon(icon("close", size=12))
@@ -584,54 +631,39 @@ class MainWindow(QMainWindow):
         self.tag_clear_btn.setCursor(Qt.PointingHandCursor)
         self.tag_clear_btn.clicked.connect(lambda _c: self._set_tag_filter(None))
         self.tag_clear_btn.setVisible(False)
-        header.addWidget(self.tag_clear_btn)
-        v.addLayout(header)
-
-        scroll = QScrollArea()
-        scroll.setObjectName("tagscroll")
-        scroll.setWidgetResizable(False)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        scroll.setFrameShape(QFrame.NoFrame)
-        self.tag_flow_widget = QWidget()
-        # No layout — chips are manually positioned with setGeometry() so their
-        # vertical spacing is deterministic regardless of QSS-vs-setFixedHeight
-        # conflicts.  This avoids the Chips-38px-tall-but-15px-apart overlap
-        # that made tag / folder clicks land on the wrong widget.
-        scroll.setWidget(self.tag_flow_widget)
-        # Keep a reference so viewport resize can update chip widths.
-        self._tag_scroll = scroll
-        v.addWidget(scroll, 1)
-
+        self.tag_section = CollapsibleSection(tr("tags"), self.tag_scroll, [self.tag_clear_btn])
+        # Keep a reference so the refresh path can read the viewport width.
+        self._tag_scroll = self.tag_scroll
         self._refresh_tag_browser()
-        return frame
 
     def _refresh_tag_browser(self):
-        """Repopulate the sidebar tag cloud from the DB.
+        """Repopulate the Filters and Tags sidebar flows from the DB.
 
         Chips are positioned *manually* with setGeometry() instead of using
         any layout.  QVBoxLayout combined with QSS `min-height` and
         setFixedHeight() produced chip slots that were SHORTER than the
         rendered widget height, so chips overlapped vertically and a real
-        mouse click landed on the neighbour or the section title instead of
-        the intended tag — which made tags, folders, and filters all appear
-        "broken".  Manual positioning guarantees every chip occupies exactly
-        its own vertical band with zero overlap.
+        mouse click landed on the neighbour instead of the intended tag —
+        which made tags, folders, and filters all appear "broken".  Manual
+        positioning guarantees every chip occupies exactly its own vertical
+        band with zero overlap.
         """
-        tw = getattr(self, "tag_flow_widget", None)
-        if tw is None:
+        ffw = getattr(self, "filter_flow_widget", None)
+        tfw = getattr(self, "tag_flow_widget", None)
+        if ffw is None or tfw is None:
             return
         # Reset the chip lookup so _update_nav_checked() always points at
         # the LIVE chips (the old ones are removed/recreated just below).
         self._tag_chips = {}
 
-        # --- clear all old widgets (no QVBoxLayout to takeFrom) ---
-        for c in list(tw.children()):
-            c.setParent(None)
-            c.deleteLater()
+        # --- clear all old widgets from both flows ---
+        for tw in (ffw, tfw):
+            for c in list(tw.children()):
+                c.setParent(None)
+                c.deleteLater()
 
-        # Always use the scroll viewport's width.  Using tag_flow_widget.width()
-        # itself was unreliable — without a layout the widget defaults to ~640
+        # Always use the scroll viewport's width.  Using the flow widget's own
+        # width() was unreliable — without a layout the widget defaults to ~640
         # which is wider than the sidebar, so chips extended into the main grid
         # area and AssetCards there painted on top of them, intercepting clicks.
         _scroll = getattr(self, "_tag_scroll", None)
@@ -641,67 +673,54 @@ class MainWindow(QMainWindow):
 
         # Chip height is observed to be 38px by QSS #nav (padding 5px + icon 14 +
         # font 12.5px).  Hardcode to that so we don't have to call
-        # QApplication.processEvents() inside a click handler (which can re-enter
-        # the event loop and break event delivery on some platforms).
+        # QApplication.processEvents() inside a click handler.
         CHIP_H = 38
         SPACING = 6
-        y = 0
 
-        def _place_widget(w, h=None):
-            """Place widget w at (0, y) with width FW and given/measured height."""
-            nonlocal y
-            w.setParent(tw)
+        def _place(w, tw, y, h=None):
+            """Place widget w at (0, y) with width FW and given/measured height;
+            returns the next y."""
             if h is None:
-                # Fallback measurement — works without processEvents for chips
-                # whose QSS style is already applied at construction time.
                 h = w.sizeHint().height() or w.height() or CHIP_H
             if h < 10:
                 h = CHIP_H
+            w.setParent(tw)
             w.setGeometry(0, y, FW, h)
             w.show()
-            y += h + SPACING
-            return w
+            return y + h + SPACING
 
-        # --- Helper to make and position a smart-filter chip ---
-        def _make_chip(text, icon_name, view_key, tooltip=None):
+        # --- Filters flow: smart-filter chips (thumbnails / favs / untagged) ---
+        yf = [0]
+
+        def _make_filter(text, icon_name, view_key):
             chip = QPushButton(icon(icon_name, size=14), " " + text)
             chip.setObjectName("nav")
             chip.setCheckable(True)
             chip.setCursor(Qt.PointingHandCursor)
             chip.setEnabled(True)
             chip.setFocusPolicy(Qt.NoFocus)
-            if tooltip:
-                chip.setToolTip(tooltip)
             chip.setChecked(self._current_view == view_key)
             chip.clicked.connect(lambda checked, k=view_key: (
                 self._set_view(k) if checked else self._clear_smart_filter()
             ))
-            return _place_widget(chip, CHIP_H)
+            yf[0] = _place(chip, ffw, yf[0], CHIP_H)
+            return chip
 
-        # --- Smart-filter chips: thumbnails / favorites / untagged ---
-        self.nav_thumb = _make_chip(tr("has_thumb"), "thumbnail", "has_thumb")
-        self.nav_nothumb = _make_chip(tr("no_thumb"), "no_thumb", "no_thumb")
-        self.nav_fav = _make_chip(tr("favorites"), "fav", "fav")
+        self.nav_thumb = _make_filter(tr("has_thumb"), "thumbnail", "has_thumb")
+        self.nav_nothumb = _make_filter(tr("no_thumb"), "no_thumb", "no_thumb")
+        self.nav_fav = _make_filter(tr("favorites"), "fav", "fav")
+        ffw.setFixedSize(FW, yf[0])
 
-        # --- separator ---
-        sep1 = QFrame()
-        sep1.setObjectName("tagsep")
-        _place_widget(sep1, 1)
-
-        # --- Section header (sizeHint gives ~20) ---
-        tag_title = self._nav_title(tr("tags"))
-        title_h = max(18, tag_title.sizeHint().height() or 20)
-        _place_widget(tag_title, title_h)
-
-        # --- Real tag chips ---
+        # --- Tags flow: real DB tags ---
+        yt = 0
         tags = self.db.all_tags_with_counts()
         if not tags:
             hint = QLabel(tr("no_tags_hint"))
             hint.setObjectName("taghint")
             hint.setWordWrap(True)
-            _place_widget(hint, 40)
+            yt = _place(hint, tfw, yt, 40)
             self.tag_clear_btn.setVisible(False)
-            tw.setFixedSize(FW, y)
+            tfw.setFixedSize(FW, yt)
             return
 
         for tag, count in tags:
@@ -714,11 +733,11 @@ class MainWindow(QMainWindow):
             chip.setToolTip("%s · %d %s" % (tag, count, tr("tag_count_suffix")))
             chip.setChecked(self._active_tag == tag)
             chip.clicked.connect(lambda _checked, t=tag: self._set_tag_filter(t))
-            _place_widget(chip, CHIP_H)
+            yt = _place(chip, tfw, yt, CHIP_H)
             self._tag_chips[tag] = chip
 
         self.tag_clear_btn.setVisible(bool(self._active_tag))
-        tw.setFixedSize(FW, y)
+        tfw.setFixedSize(FW, yt)
 
     def _size_tag_flow_to_content(self):
         # Kept as no-op stub; manual positioning handles sizing inline now.
