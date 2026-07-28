@@ -2025,6 +2025,105 @@ try:
     except Exception as e:
         bad("round17_checks", "exc %s" % e)
 
+    # ---- ROUND-18: real fix for double-click (body WA), sidebar hero max-height
+    #      + addStretch(1) before trash, no stretch=1 on folder_section ----
+    try:
+        from PySide6.QtWidgets import QLabel, QWidget
+        # (1) The body QWidget container inside AssetCard MUST be mouse-transparent.
+        # Previously we set WA_TransparentForMouseEvents on thumb/tier/chip/tag/name
+        # but forgot the bare QWidget that wraps them — body absorbed the press in
+        # its default mousePressEvent and the card never saw it (looked like a
+        # double-click bug).
+        try:
+            _ag_src = open("app/ui/asset_grid.py", encoding="utf-8").read()
+            if ("body = QWidget()" in _ag_src
+                    and 'body.setAttribute(Qt.WA_TransparentForMouseEvents, True)' in _ag_src):
+                ok("card_body_mouse_transparent",
+                   "AssetCard body QWidget sets WA_TransparentForMouseEvents")
+            else:
+                bad("card_body_mouse_transparent",
+                    "AssetCard body QWidget missing WA_TransparentForMouseEvents")
+        except Exception as _e:
+            bad("card_body_mouse_transparent", "src read exc %s" % _e)
+
+        # (2) Runtime check: find the body widget and verify it has WA set.
+        try:
+            _asset = FXAsset(source_path="x", name="qa", type="Niagara")
+            _card = AssetCard(_asset, index=0, view_mode="medium")
+            _body = None
+            for _c in _card.findChildren(QWidget):
+                if any(isinstance(x, QLabel) for x in _c.children()):
+                    _body = _c
+                    break
+            if _body is not None and _body.testAttribute(Qt.WA_TransparentForMouseEvents):
+                ok("card_body_mouse_transparent_runtime",
+                   "AssetCard body QWidget has WA_TransparentForMouseEvents at runtime")
+            else:
+                bad("card_body_mouse_transparent_runtime",
+                    "body not found or WA missing at runtime")
+            _card.deleteLater()
+        except Exception as _e:
+            bad("card_body_mouse_transparent_runtime", "exc %s" % _e)
+
+        # (3) Sidebar layout: hero frame MUST have maxHeight set + folder_section
+        # MUST NOT be added with stretch=1 (that used to blow the hero up).
+        try:
+            _mw_src = open("app/ui/main_window.py", encoding="utf-8").read()
+            if "hero.setMaximumHeight(" in _mw_src and "hero.setSizePolicy" in _mw_src:
+                ok("sidebar_hero_capped",
+                   "sidebar hero has setMaximumHeight + setSizePolicy(Preferred,Fixed)")
+            else:
+                bad("sidebar_hero_capped",
+                    "hero missing setMaximumHeight/setSizePolicy")
+            if "outer.addStretch(1)" in _mw_src:
+                ok("sidebar_addStretch_before_trash",
+                   "outer has addStretch(1) before trash (leftover space below folders)")
+            else:
+                bad("sidebar_addStretch_before_trash",
+                    "outer missing addStretch(1) before trash")
+            # folder_section must not be added with stretch=1 anymore
+            import re as _re2
+            _fs_line = next((l for l in _mw_src.splitlines()
+                             if "outer.addWidget(self.folder_section" in l), "")
+            if _fs_line and ", 1)" not in _fs_line:
+                ok("sidebar_folder_no_stretch",
+                   "folder_section added without stretch=1 (was the hero-blowout cause)")
+            else:
+                bad("sidebar_folder_no_stretch",
+                    "folder_section still has stretch=1: %r" % _fs_line.strip())
+        except Exception as _e:
+            bad("sidebar_hero_capped", "src read exc %s" % _e)
+
+        # (4) Runtime check: with all sections collapsed, hero height stays fixed
+        # and folder_section maxHeight is capped to header height.
+        try:
+            import os as _os
+            _os.environ['QT_QPA_PLATFORM'] = 'offscreen'
+            from app.ui.main_window import MainWindow as _MW
+            _mw = _MW()
+            _mw.resize(1440, 900)
+            _mw.show()
+            from PySide6.QtWidgets import QApplication as _QA
+            _QA.processEvents()
+            for _sec in (_mw.filter_section, _mw.tag_section, _mw.folder_section):
+                _sec.set_collapsed(True)
+            _QA.processEvents()
+            _hero_h = _mw.hero_mono.parent().height()
+            _fsmax = _mw.folder_section.maximumHeight()
+            if _hero_h <= 140 and _fsmax <= 50:
+                ok("sidebar_collapsed_geometry_runtime",
+                   "all-collapsed: hero=%d (<=140), folder.maxH=%d (<=50)" % (_hero_h, _fsmax))
+            else:
+                bad("sidebar_collapsed_geometry_runtime",
+                    "hero=%d (>140) or folder.maxH=%d (>50) when all collapsed"
+                    % (_hero_h, _fsmax))
+            _mw.close()
+            _mw.deleteLater()
+        except Exception as _e:
+            bad("sidebar_collapsed_geometry_runtime", "exc %s" % _e)
+    except Exception as e:
+        bad("round18_checks", "exc %s" % e)
+
     log("=== REPORT ===")
     fails = [r for r in results if r[0] == "FAIL"]
     passes = [r for r in results if r[0] == "PASS"]

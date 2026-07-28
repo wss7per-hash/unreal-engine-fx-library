@@ -369,7 +369,16 @@ class AssetCard(QWidget):
         self._sel_color = QColor(THEMES.get(self._theme, THEMES["light"])["accent"])
 
         # ---- body ----
+        # CRITICAL: body itself must be mouse-transparent. The QLabels
+        # inside (name, chip, tag, bp_chip) all have WA_TransparentForMouseEvents
+        # so they pass presses through, but this bare QWidget container
+        # sits between them and the card. Without WA_TransparentForMouseEvents
+        # the body's default mousePressEvent accepts the event and the card
+        # never sees the press — making the user click TWICE on the name/chip
+        # region to select a different card. (QGraphicsEffect is NOT the cause;
+        # this empty body container was the real culprit all along.)
         body = QWidget()
+        body.setAttribute(Qt.WA_TransparentForMouseEvents, True)
         body.setStyleSheet("background:transparent;")
         bl = QVBoxLayout(body)
         bl.setContentsMargins(10, 6, 10, 8)

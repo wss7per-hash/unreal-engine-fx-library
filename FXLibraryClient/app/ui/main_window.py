@@ -21,7 +21,8 @@ from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                                QProgressBar, QCheckBox, QTableWidget,
                                QTableWidgetItem, QHeaderView, QStackedWidget,
                                QAbstractItemView, QGraphicsOpacityEffect,
-                               QGraphicsDropShadowEffect, QListView)
+                               QGraphicsDropShadowEffect, QSizePolicy,
+                               QListView)
 from PySide6.QtCore import (Qt, QPoint, QRect, QTimer, QSize, Signal, QEvent,
                             QPropertyAnimation, QEasingCurve)
 from PySide6.QtGui import (QPixmap, QIcon, QImage, QColor, QPainter, QFont,
@@ -564,6 +565,14 @@ class MainWindow(QMainWindow):
         self.hero_meta = QLabel("")
         self.hero_meta.setObjectName("herometa")
         hv.addWidget(self.hero_meta)
+        # Hero is a STAT card, not a flex spacer — pin it to a sane fixed
+        # height so that when the three collapsible sections below are all
+        # collapsed (folders.maxHeight == headerHeight) the leftover
+        # vertical space in the sidebar outer layout doesn't get re-distributed
+        # proportionally to all widgets (which used to blow hero up to fill
+        # the entire sidebar height, pushing the chevrons/trash down).
+        hero.setMaximumHeight(140)
+        hero.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         outer.addWidget(hero)
         outer.addSpacing(12)
 
@@ -584,9 +593,15 @@ class MainWindow(QMainWindow):
         self.folder_tree = self._build_folder_tree()
         self.folder_section = CollapsibleSection(
             tr("folders"), self.folder_tree, [self.btn_new_folder])
-        outer.addWidget(self.folder_section, 1)
+        # No stretch=1 here on purpose: a stretch on folder_section used to
+        # blow out the hero card above when all sections were collapsed.
+        # Instead the leftover space goes to the addStretch(1) below the
+        # folder section, which pins the trash to the bottom and keeps the
+        # hero card a fixed height.
+        outer.addWidget(self.folder_section)
 
         # ---- Trash pinned at bottom, separated by a divider so it reads as a footer ----
+        outer.addStretch(1)
         outer.addSpacing(6)
         footer_sep = QFrame()
         footer_sep.setObjectName("seph")
