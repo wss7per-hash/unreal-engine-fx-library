@@ -1233,7 +1233,6 @@ try:
     needed = [
         "QLabel#cardtier",
         "QPushButton#cardfav",
-        "QPushButton#cardcheck",
         "QLabel#cardtypechip",
         "QLabel#cardbpchip",
         "QLabel#cardemptylabel",
@@ -1256,12 +1255,24 @@ try:
     else:
         bad("typechip_uses_dynamic_property", "type chip does not set 'type' dynamic property")
 
-    if (re.search(r'self\.check\.setProperty\(\s*"selected"\s*,\s*"true"', ag)
-            and re.search(r'self\.check\.setProperty\(\s*"selected"\s*,\s*"false"', ag)
-            and re.search(r"unpolish\(self\.check\)", ag)):
-        ok("cardcheck_uses_dynamic_property", "card check uses [selected] dynamic property (no inline chrome)")
+    if (re.search(r"if self\._selected:", ag)
+            and re.search(r"drawEllipse", ag)
+            and re.search(r"check\.lineTo\(|drawPath", ag)):
+        ok("card_selection_dot_painted",
+           "AssetCard paintEvent draws selection dot directly (no overlay button)")
     else:
-        bad("cardcheck_uses_dynamic_property", "card check still uses inline setStyleSheet for selected state")
+        bad("card_selection_dot_painted",
+            "AssetCard paintEvent missing selection dot indicator")
+    # Belt-and-suspenders: no leftover overlay checkbox button (it used to
+    # render as a loud blue square on top of the selected card border).
+    if re.search(r"self\.check\s*=\s*QPushButton", ag) \
+            or re.search(r"def _on_check", ag) \
+            or re.search(r"self\.check\.move\(", ag):
+        bad("card_no_overlay_check",
+            "AssetCard still has the old overlay checkbox button")
+    else:
+        ok("card_no_overlay_check",
+           "AssetCard overlay checkbox removed")
 
     # ROUND-9: the Stripe 柔光 redesign requires ALL main CTAs to use the
     # indigo→cyan dual-tone gradient (accent → accent2). This covers
@@ -1855,6 +1866,47 @@ try:
         import traceback as _tb
         bad("backfill_iter_excludes_deleted",
             "exc %s\n%s" % (e, _tb.format_exc()))
+
+    # ROUND-16: inspector controls visibility (dark theme contrast regression).
+    # The inspector's #secondary buttons, QLineEdit and QTextEdit sit on the
+    # dock panel which is one shade off `bg2` in dark mode, so they blended in
+    # and read as floating text. Verify the QSS bumps them to `panel2` (the
+    # designated "slightly elevated" surface) so they have a real outline.
+    try:
+        import re as _re
+        _sty = open(os.path.join(os.path.dirname(__file__), "..", "app",
+                                 "style.py"), encoding="utf-8").read()
+
+        def _grab(s, opener):
+            """Capture the body of a CSS block whose opener is `opener` and
+            body starts with `{{` (the format-escaped brace) and ends with `}}`.
+            Inner `{token}` placeholders are tolerated."""
+            m = _re.search(
+                _re.escape(opener) + r"\s*\{\{(.*?)\}\}",
+                s, _re.S)
+            return m.group(1) if m else None
+
+        # Find the #secondary block — its background must be {panel2}.
+        _sec = _grab(_sty, "QPushButton#secondary")
+        if _sec and "{panel2}" in _sec and "{input_bg}" not in _sec:
+            ok("secondary_uses_panel2",
+               "#secondary uses panel2 background (visible on dock_bg)")
+        else:
+            bad("secondary_uses_panel2",
+                "#secondary block not panel2-backed: %r" % _sec)
+        # Generic QLineEdit + QTextEdit must also use panel2 (was input_bg).
+        _le = _grab(_sty, "QLineEdit")
+        _te = _grab(_sty, "QTextEdit, QPlainTextEdit")
+        _le_ok = _le and "{panel2}" in _le and "{input_bg}" not in _le
+        _te_ok = _te and "{panel2}" in _te and "{input_bg}" not in _te
+        if _le_ok and _te_ok:
+            ok("inputs_uses_panel2",
+               "QLineEdit + QTextEdit use panel2 (visible form fields on dock_bg)")
+        else:
+            bad("inputs_uses_panel2",
+                "QLineEdit OK=%s TextEdit OK=%s" % (_le_ok, _te_ok))
+    except Exception as e:
+        bad("secondary_uses_panel2", "exc %s" % e)
 
     log("=== REPORT ===")
     fails = [r for r in results if r[0] == "FAIL"]

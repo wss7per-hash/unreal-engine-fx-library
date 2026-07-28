@@ -9,7 +9,8 @@ from PySide6.QtWidgets import (QScrollArea, QWidget, QGridLayout, QLabel,
 from PySide6.QtCore import (Qt, QSize, QRect, QRectF, QPoint, Signal, QTimer,
                             QPropertyAnimation, QEasingCurve)
 from PySide6.QtGui import (QPixmap, QIcon, QPainter, QColor, QFont,
-                           QLinearGradient, QImage, QPainterPath, QFontMetrics)
+                           QLinearGradient, QImage, QPainterPath, QFontMetrics,
+                           QPen)
 
 from app.i18n import tr
 from app.icons import icon
@@ -335,15 +336,9 @@ class AssetCard(QWidget):
         self.tier.move(8, 8)
         self.tier.setVisible(self._tier_visible())
 
-        # check (top-left overlay) — visible when selected
-        self.check = QPushButton(self.thumb)
-        self.check.setObjectName("cardcheck")
-        self.check.setProperty("selected", "false")
-        self.check.setFixedSize(26, 26)
-        self.check.setIcon(QIcon())
-        self.check.setChecked(False)
-        self.check.clicked.connect(self._on_check)
-        self.check.hide()
+        # selection dot is drawn directly in paintEvent() — no overlay
+        # button. The card itself is the click target; Ctrl+click toggles
+        # selection without firing the activated signal.
 
         # fav (top-right)
         self.fav = QPushButton(self.thumb)
@@ -459,24 +454,9 @@ class AssetCard(QWidget):
         if parent_grid:
             parent_grid.fav_changed.emit(self.asset, self._fav)
 
-    def _on_check(self):
-        self.set_selected(not self._selected)
-        self.toggled.emit(self.asset, self._selected)
-
     def set_selected(self, b):
         self._selected = b
         self.update()
-        self.check.setVisible(b)
-        self.check.setChecked(b)
-        self.check.setIcon(_check_icon() if b else QIcon())
-        if b:
-            self.check.setProperty("selected", "true")
-        else:
-            self.check.setProperty("selected", "false")
-        # re-polish so the QProperty change re-applies the matching
-        # #cardcheck[selected="..."] QSS rule.
-        self.check.style().unpolish(self.check)
-        self.check.style().polish(self.check)
         # Deepen shadow on selection for tactile "lift" feedback
         if hasattr(self, "_shadow"):
             if b:
@@ -575,29 +555,40 @@ class AssetCard(QWidget):
         self.tier.move(8, 8)
         self.tier.adjustSize()
         self.fav.move(w - 8 - 28, 8)
-        self.check.move(8, 8)
         self._elide_name()
         self._refresh_tag_text()
         super().resizeEvent(e)
 
     def paintEvent(self, e):
         super().paintEvent(e)
+        # Selection indicator: a small accent dot in the top-left corner,
+        # drawn directly in the card's own paintEvent so we don't have to
+        # rely on a separate QPushButton overlay (which previously rendered
+        # as a loud blue square and made the card look like it had two
+        # stacked borders).
         if self._selected:
             p = QPainter(self)
             p.setRenderHint(QPainter.Antialiasing)
-            # outer accent border
-            p.setPen(QColor(self._sel_color))
-            p.setBrush(Qt.NoBrush)
-            p.drawRoundedRect(1, 1, self.width() - 2, self.height() - 2, 16, 16)
-            # top glow line
-            glow = QLinearGradient(0, 1, 0, 4)
-            glow.setColorAt(0.0, QColor(self._sel_color))
-            glow.setColorAt(1.0, QColor(self._sel_color))
-            pen = p.pen()
-            pen.setBrush(glow)
-            pen.setWidthF(2.0)
+            d = 12                 # dot diameter
+            m = 8                  # margin from corner
+            # Soft dark backdrop so the accent stays legible on any thumb
+            p.setBrush(QColor(15, 23, 42, 170))
+            p.setPen(Qt.NoPen)
+            p.drawEllipse(m, m, d, d)
+            # Accent ring + check inside
+            pen = QPen(QColor(self._sel_color))
+            pen.setWidthF(1.5)
             p.setPen(pen)
-            p.drawLine(4, 2, self.width() - 4, 2)
+            p.setBrush(Qt.NoBrush)
+            p.drawEllipse(m + 0.75, m + 0.75, d - 1.5, d - 1.5)
+            p.setPen(QPen(QColor("#ffffff")))
+            p.setRenderHint(QPainter.Antialiasing)
+            cx, cy = m + d / 2, m + d / 2
+            check = QPainterPath()
+            check.moveTo(cx - 3.0, cy + 0.2)
+            check.lineTo(cx - 0.8, cy + 2.4)
+            check.lineTo(cx + 3.2, cy - 2.4)
+            p.drawPath(check)
             p.end()
 
 

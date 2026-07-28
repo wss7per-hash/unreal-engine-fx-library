@@ -134,13 +134,14 @@ QPushButton:pressed {{ background: {accent_pressed}; }}
 QPushButton:disabled {{ background: {border2}; color: {muted2}; }}
 
 QPushButton#secondary {{
-    background: {bg2};
+    background: {panel2};
     color: {text};
     border: 1px solid {border2};
     border-radius: {{r_md}};
     padding: 5px 12px;
+    font-weight: 500;
 }}
-QPushButton#secondary:hover {{ background: {panel2}; border: 1px solid {muted2}; }}
+QPushButton#secondary:hover {{ background: {bg2}; border: 1px solid {muted2}; color: {accent}; }}
 QPushButton#secondary:pressed {{ background: {border}; }}
 
 QPushButton#danger {{
@@ -342,8 +343,12 @@ QPushButton#toolbarprimary:hover {{ background: qlineargradient(x1:0, y1:0, x2:1
 QPushButton#toolbarprimary:pressed {{ background: {accent_pressed}; color: #ffffff; }}
 
 /* ---------- line edits ---------- */
+/* Inspector fields (tag input, note editor) sit on dock_bg (#161b22 dark /
+   #ffffff light) and were nearly invisible because input_bg = bg2 was too
+   close to the panel. Use panel2 (slight elevation) + border2 outline so
+   they read as proper form fields on either theme. */
 QLineEdit {{
-    background: {input_bg};
+    background: {panel2};
     border: 1px solid {border2};
     border-radius: {{r_md}};
     padding: 8px 10px;
@@ -351,10 +356,10 @@ QLineEdit {{
     color: {text};
 }}
 QLineEdit:focus {{ border: 1px solid {accent}; }}
-QLineEdit:disabled {{ background: {panel2}; color: {muted2}; }}
+QLineEdit:disabled {{ background: {bg2}; color: {muted2}; }}
 QTextEdit, QPlainTextEdit {{
-    background: {input_bg};
-    border: 1px solid {border};
+    background: {panel2};
+    border: 1px solid {border2};
     border-radius: {{r_md}};
     padding: 8px;
     color: {text};
@@ -476,9 +481,15 @@ AssetCard {{
     box-shadow: 0 1px 2px {shadow_sm};
 }}
 AssetCard:hover {{ border: 1px solid {border2}; box-shadow: 0 8px 20px {shadow_md}; }}
+/* Selected: subtle accent top stripe + tinted bg. No full-perimeter border
+   (that used to stack with the paintEvent border and read as two stacked
+   blue frames). The small accent dot is drawn in AssetCard.paintEvent. */
 AssetCard[selected="true"] {{
-    border: 2px solid {accent};
+    border: 1px solid {border2};
     background: {card_sel};
+    border-top: 3px solid {accent};
+    border-top-left-radius: {{r_lg}};
+    border-top-right-radius: {{r_lg}};
     box-shadow: 0 12px 28px {shadow_lg};
 }}
 
