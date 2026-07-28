@@ -1130,6 +1130,8 @@ class MainWindow(QMainWindow):
 
     def _build_main_area(self):
         frame = QFrame()
+        frame.setObjectName("mainarea")
+        self.main_area_frame = frame
         frame.setStyleSheet("background:transparent;")
         v = QVBoxLayout(frame)
         v.setContentsMargins(0, 0, 0, 0)
@@ -1344,6 +1346,7 @@ class MainWindow(QMainWindow):
         self.details_table = self._build_details_table()
         # stacked: page0 = grid, page1 = details table
         self.content_stack = QStackedWidget()
+        self.content_stack.setObjectName("contentstack")
         self.content_stack.addWidget(self.grid)
         self.content_stack.addWidget(self.details_table)
         # initial page + grid view-mode from saved config
@@ -1940,6 +1943,13 @@ class MainWindow(QMainWindow):
         _tok = self.tok()
         if hasattr(self, "insp_pad"):
             self.insp_pad.setStyleSheet("background:%s;" % _tok["bg2"])
+        # Main area center panel: QStackedWidget / QScrollArea viewport often
+        # falls back to native white on Windows when theme switches. Force-refresh
+        # so the card grid area stays {bg} in dark mode and light in light mode.
+        if hasattr(self, "content_stack"):
+            self.content_stack.setStyleSheet("background:%s;" % _tok["bg"])
+        if hasattr(self, "main_area_frame"):
+            self.main_area_frame.setStyleSheet("background:%s;" % _tok["bg"])
         # Inspector button icons (set once at creation with theme token —
         # must refresh on switch or they stay dark-colored in light mode).
         for _name, _ic in (("insp_open", "open"), ("insp_copy", "copy"),
