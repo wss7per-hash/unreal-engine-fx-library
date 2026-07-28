@@ -1,15 +1,16 @@
 # app/ui/tag_manager_dialog.py -- list / rename / delete tags library-wide.
 
-from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
+from PySide6.QtWidgets import (QVBoxLayout, QHBoxLayout, QLabel,
                                QPushButton, QListWidget, QListWidgetItem,
                                QInputDialog, QMessageBox, QWidget, QSizePolicy)
 from PySide6.QtCore import Qt
 
 from app.i18n import tr
 from app.style import THEMES
+from app.ui.base_dialog import BaseDialog
 
 
-class TagManagerDialog(QDialog):
+class TagManagerDialog(BaseDialog):
     def __init__(self, db, theme, parent=None):
         super().__init__(parent)
         self.db = db

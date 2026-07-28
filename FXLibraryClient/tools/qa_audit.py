@@ -933,6 +933,79 @@ try:
                 "#inspnote should use 2px border to be visible in dark mode. Block: %r" % _note_block[:300])
     else:
         bad("inspnote_visible_border", "#inspnote rule missing")
+    # ROUND-21: dialog styling overhaul.
+    # (a) The base QLabel rule MUST set background: transparent — the global
+    # `QWidget { background: {bg} }` rule painted every bare label as a dark
+    # rectangle; inside dialogs (on the lighter bg2) each label showed as a
+    # black bar (user: "一行行黑色的黑框" in the About dialog).
+    _ql_idx = style_text.find("QLabel {{ color: {muted};")
+    if _ql_idx >= 0 and "background: transparent" in style_text[_ql_idx:_ql_idx + 120]:
+        ok("label_transparent_bg",
+           "base QLabel rule has background: transparent (no black bars in dialogs)")
+    else:
+        bad("label_transparent_bg",
+            "base QLabel rule must include background: transparent")
+    # (b) QCheckBox must be styled (transparent bg + tokenized indicator) —
+    # previously no rule existed and dialogs showed native Win32 checkboxes
+    # on a dark box.
+    if "QCheckBox::indicator" in style_text and "QCheckBox, QRadioButton" in style_text:
+        ok("checkbox_tokenized",
+           "QCheckBox/QRadioButton have transparent bg + tokenized indicator rules")
+    else:
+        bad("checkbox_tokenized", "QCheckBox styling rules missing from style.py")
+    # (c) Radius tokens must RESOLVE in the formatted output. The historic
+    # {{r_md}} double-brace escape emitted a literal "{r_md}" that Qt
+    # silently ignored — rounded corners never actually applied.
+    from app.style import get_stylesheet as _get_ss
+    _fmt_dark = _get_ss("dark")
+    if "{r_" not in _fmt_dark and "border-radius: 12px" in _fmt_dark:
+        ok("radius_tokens_resolve",
+           "radius tokens resolve to px values in formatted QSS")
+    else:
+        bad("radius_tokens_resolve",
+            "formatted QSS still contains literal {r_XX} radius tokens")
+    # (d) All app dialogs must inherit BaseDialog, which re-applies the
+    # QApplication stylesheet (Windows modal dialogs sometimes drop the
+    # global QSS cascade and fall back to native controls — the user saw
+    # a stock white Win32 combo box in Settings).
+    try:
+        _bd_src = open("app/ui/base_dialog.py", encoding="utf-8").read()
+        _st_src = open("app/ui/settings_dialog.py", encoding="utf-8").read()
+        _ab_src = open("app/ui/about_dialog.py", encoding="utf-8").read()
+        _tm_src = open("app/ui/tag_manager_dialog.py", encoding="utf-8").read()
+        if ("app.styleSheet()" in _bd_src
+                and "class SettingsDialog(BaseDialog)" in _st_src
+                and "class AboutDialog(BaseDialog)" in _ab_src
+                and "class TagManagerDialog(BaseDialog)" in _tm_src):
+            ok("dialogs_inherit_base",
+               "Settings/About/TagManager dialogs inherit BaseDialog (QSS re-applied)")
+        else:
+            bad("dialogs_inherit_base",
+                "some dialog does not inherit BaseDialog / BaseDialog missing QSS re-apply")
+    except OSError as e:
+        bad("dialogs_inherit_base", "cannot read dialog sources: %s" % e)
+    # (e) Settings OK/Cancel must carry design-system objectNames, and About
+    # must not hardcode the old half-dark palette colors.
+    if 'setObjectName("primary")' in _st_src and 'setObjectName("secondary")' in _st_src:
+        ok("settings_buttons_named",
+           "Settings OK=primary / Cancel=secondary objectNames set")
+    else:
+        bad("settings_buttons_named",
+            "Settings QDialogButtonBox buttons missing primary/secondary objectNames")
+    if "#8a8fa3" not in _ab_src and "#3a3f52" not in _ab_src:
+        ok("about_no_hardcoded_colors",
+           "About dialog uses theme tokens (no hardcoded #8a8fa3/#3a3f52)")
+    else:
+        bad("about_no_hardcoded_colors",
+            "About dialog still hardcodes palette hex colors")
+    # (f) Import-mode chooser must use #sfbtn option buttons, not bare
+    # solid-purple QPushButtons.
+    if 'b.setObjectName("sfbtn")' in mw_src:
+        ok("import_mode_sfbtn",
+           "_ask_import_mode uses #sfbtn option-row buttons")
+    else:
+        bad("import_mode_sfbtn",
+            "_ask_import_mode buttons missing #sfbtn objectName")
     # ROUND-19: inspector action buttons are in a single column (no
     # QGridLayout that mixes 2-col + 1-col rows).
     if "actions = QGridLayout()" in mw_src:
@@ -2042,18 +2115,19 @@ try:
             bad("card_defers_focus_on_press",
                 "AssetCard mousePressEvent does not defer setFocus")
         # (4) QSS must include the new #inspnote rule with a visible border.
-        # NOTE: the radius tokens ({{r_md}} etc.) are intentionally left as
-        # literal {r_XX} in the formatted output (a pre-existing style.py
-        # quirk), so a brace-counting regex like \{[^}]+\} mis-captures the
-        # rule. Use a fixed-size chunk after the selector instead — the
-        # rule is well under 500 chars.
+        # NOTE: the radius tokens now RESOLVE to real px values (the historic
+        # {{r_md}} double-brace escape bug was fixed — border-radius used to
+        # emit a literal "{r_md}" that Qt silently ignored). Fixed-size chunks
+        # after the selector remain the safest way to grab a rule.
         _sty2 = get_stylesheet("dark")
         _idx = _sty2.find("QTextEdit#inspnote")
         if _idx >= 0:
             _note_chunk = _sty2[_idx:_idx + 500]
-            if "border: 1.5px solid" in _note_chunk and "padding: 10px 12px" in _note_chunk:
+            # ROUND-20 deepened the note border from 1.5px to 2px; assertion
+            # updated to match (was stale and failing).
+            if "border: 2px solid" in _note_chunk and "padding: 10px 12px" in _note_chunk:
                 ok("inspnote_qss_has_border",
-                   "QTextEdit#inspnote has 1.5px border + 10/12 padding (visible input)")
+                   "QTextEdit#inspnote has 2px border + 10/12 padding (visible input)")
             else:
                 bad("inspnote_qss_has_border",
                     "QTextEdit#inspnote chunk missing border/padding: %r" % _note_chunk[:200])
@@ -2062,7 +2136,9 @@ try:
         # (5) #secondary must have the strengthened padding/min-height/font-weight.
         _idx2 = _sty2.find("QPushButton#secondary {")
         if _idx2 >= 0:
-            _sec2_chunk = _sty2[_idx2:_idx2 + 500]
+            # 800-char chunk: the long explanatory comment inside the rule
+            # pushed `min-height` past the old 500-char window (stale FAIL).
+            _sec2_chunk = _sty2[_idx2:_idx2 + 800]
             if ("min-height: 20px" in _sec2_chunk
                     and "font-weight: 600" in _sec2_chunk
                     and "padding: 7px 14px" in _sec2_chunk):

@@ -39,6 +39,7 @@ from app.ui.asset_grid import (AssetGrid, _crop_to_square, _placeholder,
                                  DEFAULT_CHIP, TYPE_CHIP, TIER_LABEL)
 from app.ui.log_panel import LogPanel
 from app.ui.settings_dialog import SettingsDialog
+from app.ui.base_dialog import BaseDialog
 from app.style import get_stylesheet, resolve_theme
 from app.i18n import tr, reset_language_cache
 from app.icons import icon, app_icon, type_glyph_pixmap
@@ -2487,17 +2488,24 @@ class MainWindow(QMainWindow):
     def _ask_import_mode(self):
         cur = self.cfg.get("import_mode", "reference")
         read_thumbs = self.cfg.get("read_thumbs_on_import", True)
-        dlg = QDialog(self)
+        dlg = BaseDialog(self)
         dlg.setWindowTitle(tr("import_mode_title"))
         dlg.setMinimumWidth(360)
         vl = QVBoxLayout(dlg)
+        vl.setContentsMargins(20, 20, 20, 20)
+        vl.setSpacing(10)
         vl.addWidget(QLabel(tr("import_mode_prompt")))
         for m, label in (("reference", tr("mode_reference")),
                          ("copy", tr("mode_copy"))):
             b = QPushButton(label)
-            b.setStyleSheet("text-align:left; padding:9px;")
-            if m == cur:
-                b.setStyleSheet(b.styleSheet() + "font-weight:700;")
+            # #sfbtn = the design system's left-aligned option-row button.
+            # The old bare QPushButton picked up the generic solid-purple rule
+            # and the two choices looked like a pair of loud CTAs.
+            b.setObjectName("sfbtn")
+            b.setCheckable(True)
+            b.setChecked(m == cur)
+            b.setMinimumHeight(38)
+            b.setCursor(Qt.PointingHandCursor)
             b.clicked.connect(lambda _c, mm=m: (
                 self.cfg.__setitem__("import_mode", mm), cfg.save(self.cfg), dlg.accept()))
             vl.addWidget(b)
@@ -2974,7 +2982,7 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(tr("health_done"))
             self._reload_library()
             return
-        dlg = QDialog(self)
+        dlg = BaseDialog(self)
         dlg.setWindowTitle(tr("health_report_title"))
         dlg.setMinimumWidth(460)
         root = QVBoxLayout(dlg)
@@ -2987,6 +2995,10 @@ class MainWindow(QMainWindow):
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.NoFrame)
         box = QWidget()
+        # bare QWidget container inherits the global QWidget {bg} rule —
+        # on the dialog's lighter bg2 it painted a big dark block behind
+        # the issue rows. Keep it transparent so rows sit on the dialog bg.
+        box.setStyleSheet("background: transparent;")
         bl = QVBoxLayout(box)
         bl.setContentsMargins(0, 0, 0, 0)
         bl.setSpacing(6)

@@ -126,7 +126,7 @@ QToolTip {{
     background-color: {bg2};
     color: {text};
     border: 1px solid {border};
-    border-radius: {{r_sm}};
+    border-radius: {r_sm};
     padding: 6px 10px;
     /* No `opacity` — stacking with the top-level window's alpha makes the box
        look BLACK in light mode (user saw: hovering any setToolTip'd button
@@ -137,7 +137,7 @@ QToolTip:disabled {{ color: {muted2}; background-color: {panel2}; }}
 /* ---------- docks ---------- */
 QDockWidget {{
     border: 1px solid {border};
-    border-radius: {{r_lg}};
+    border-radius: {r_lg};
     background: {dock_bg};
     margin: 8px;
 }}
@@ -159,7 +159,7 @@ QPushButton {{
     background: {accent};
     color: #ffffff;
     border: none;
-    border-radius: {{r_md}};
+    border-radius: {r_md};
     padding: 8px 14px;
     font-weight: 600;
     min-height: 28px;
@@ -172,7 +172,7 @@ QPushButton#secondary {{
     background: {panel2};
     color: {text};
     border: 1px solid {border2};
-    border-radius: {{r_md}};
+    border-radius: {r_md};
     padding: 7px 14px;
     font-weight: 600;
     font-size: 12px;
@@ -191,7 +191,7 @@ QPushButton#danger {{
     background: {bg2};
     color: #e5484d;
     border: 1px solid {border2};
-    border-radius: {{r_md}};
+    border-radius: {r_md};
     padding: 5px 10px;
     font-weight: 600;
     font-size: 12px;
@@ -203,7 +203,7 @@ QPushButton#sfbtn {{
     background: {bg2};
     color: {text};
     border: 1px solid {border};
-    border-radius: {{r_md}};
+    border-radius: {r_md};
     padding: 6px 10px;
     font-size: 12px;
     font-weight: 500;
@@ -218,7 +218,7 @@ QPushButton#icon {{
     background: {bg2};
     color: {muted};
     border: 1px solid {border};
-    border-radius: {{r_md}};
+    border-radius: {r_md};
     padding: 5px;
     min-width: 30px; min-height: 30px;
 }}
@@ -234,7 +234,7 @@ QPushButton#iconghost {{
     background: transparent;
     color: {muted};
     border: none;
-    border-radius: {{r_sm}};
+    border-radius: {r_sm};
     padding: 3px;
     min-width: 24px; min-height: 24px;
 }}
@@ -245,7 +245,7 @@ QPushButton#lang {{
     background: {bg2};
     color: {text};
     border: 1px solid {border};
-    border-radius: {{r_md}};
+    border-radius: {r_md};
     padding: 5px 9px;
     font-size: 11px;
     font-weight: 700;
@@ -257,7 +257,7 @@ QPushButton#nav {{
     background: {bg2};
     color: {muted};
     border: 1px solid {border};
-    border-radius: {{r_md}};
+    border-radius: {r_md};
     padding: 5px 10px;
     font-size: 12.5px;
     font-weight: 500;
@@ -286,7 +286,7 @@ QPushButton#tag {{
     background: {bg2};
     color: {muted};
     border: 1px solid {border};
-    border-radius: {{r_md}};
+    border-radius: {r_md};
     padding: 3px 6px;
     font-size: 11px;
     font-weight: 500;
@@ -304,7 +304,7 @@ QPushButton#tagchipbar {{
     background: {bg2};
     color: {muted};
     border: 1px solid {border};
-    border-radius: {{r_md}};
+    border-radius: {r_md};
     padding: 3px 9px;
     font-size: 11.5px;
     font-weight: 500;
@@ -346,7 +346,7 @@ QPushButton#act {{
     background: {bg2};
     color: {text};
     border: 1px solid {border};
-    border-radius: {{r_md}};
+    border-radius: {r_md};
     padding: 5px 10px;
     font-weight: 600;
     font-size: 12px;
@@ -360,7 +360,7 @@ QPushButton#primary {{
         stop:0 {accent}, stop:1 {accent2});
     color: #ffffff;
     border: none;
-    border-radius: {{r_md}};
+    border-radius: {r_md};
     padding: 8px 16px;
     font-weight: 700;
 }}
@@ -376,7 +376,7 @@ QPushButton#toolbarprimary {{
         stop:0 {accent}, stop:1 {accent2});
     color: #ffffff;
     border: none;
-    border-radius: {{r_md}};
+    border-radius: {r_md};
     padding: 5px 10px;
     font-weight: 600;
 }}
@@ -393,7 +393,7 @@ QPushButton#toolbarprimary:pressed {{ background: {accent_pressed}; color: #ffff
 QLineEdit {{
     background: {panel2};
     border: 1px solid {border2};
-    border-radius: {{r_md}};
+    border-radius: {r_md};
     padding: 8px 10px;
     min-height: 20px;
     color: {text};
@@ -403,7 +403,7 @@ QLineEdit:disabled {{ background: {bg2}; color: {muted2}; }}
 QTextEdit, QPlainTextEdit {{
     background: {panel2};
     border: 1px solid {border2};
-    border-radius: {{r_md}};
+    border-radius: {r_md};
     padding: 8px;
     color: {text};
 }}
@@ -415,7 +415,7 @@ QTextEdit, QPlainTextEdit {{
 QTextEdit#inspnote {{
     background: {bg2};
     border: 2px solid {border};
-    border-radius: {{r_md}};
+    border-radius: {r_md};
     padding: 10px 12px;
     color: {text};
     selection-background-color: {accent};
@@ -427,14 +427,19 @@ QTextEdit#inspnote:focus {{
 }}
 
 /* ---------- labels ---------- */
-QLabel {{ color: {muted}; }}
+/* transparent background is CRITICAL: the global `QWidget {{ background: {bg} }}`
+   rule painted every bare QLabel as a dark rectangle. Inside dialogs (which sit
+   on the lighter {bg2}) each label showed up as a black bar — the user saw
+   "一行行黑色的黑框" in the About dialog. Labels that need a background set it
+   via a more specific #objectName rule or inline QSS, both of which win. */
+QLabel {{ color: {muted}; background: transparent; }}
 QLabel#title {{ font-size: 16px; font-weight: 700; color: {text}; }}
 QLabel#subtitle {{ font-size: 12px; color: {muted2}; }}
 QLabel#section {{ font-size: 16px; font-weight: 700; color: {text}; }}
 QLabel#count {{ font-size: 12px; color: {muted}; }}
 QLabel#navcount {{
     font-size: 11px; color: {muted2}; background: {panel2};
-    border-radius: {{r_sm}}; padding: 1px 7px;
+    border-radius: {r_sm}; padding: 1px 7px;
 }}
 QLabel#brand {{ font-size: 16px; font-weight: 700; color: {text}; }}
 QLabel#tagline {{ font-size: 11px; color: {muted}; }}
@@ -451,7 +456,7 @@ QLabel#selhint {{
         stop:0 rgba(99,91,255,0.12), stop:1 rgba(0,163,255,0.08));
 }}
 QLabel#healthpill {{
-    border-radius: {{r_sm}}; padding: 3px 10px; font-size: 11px; font-weight: 700;
+    border-radius: {r_sm}; padding: 3px 10px; font-size: 11px; font-weight: 700;
 }}
 
 /* ---------- scroll areas / grid ---------- */
@@ -482,11 +487,37 @@ QMessageBox {{ background: {bg2}; }}
 QMessageBox QPushButton {{ min-width: 80px; }}
 QInputDialog {{ background: {bg2}; }}
 
+/* ---------- checkbox / radio ----------
+   No rule existed at all: checkboxes inherited the global QWidget {bg}
+   background (dark box behind the label text inside dialogs) and rendered
+   the native Win32 indicator. Tokenized to match the input controls. */
+QCheckBox, QRadioButton {{
+    background: transparent;
+    color: {text};
+    spacing: 8px;
+}}
+QCheckBox:disabled, QRadioButton:disabled {{ color: {muted2}; }}
+QCheckBox::indicator, QRadioButton::indicator {{
+    width: 16px; height: 16px;
+    border: 1px solid {border2};
+    border-radius: 4px;
+    background: {input_bg};
+}}
+QRadioButton::indicator {{ border-radius: 8px; }}
+QCheckBox::indicator:hover, QRadioButton::indicator:hover {{ border-color: {accent}; }}
+QCheckBox::indicator:checked, QRadioButton::indicator:checked {{
+    background: {accent};
+    border-color: {accent};
+}}
+QCheckBox::indicator:checked:hover, QRadioButton::indicator:checked:hover {{
+    background: {accent_hover};
+}}
+
 /* ---------- combo box ---------- */
 QComboBox {{
     background: {input_bg};
     border: 1px solid {border2};
-    border-radius: {{r_md}};
+    border-radius: {r_md};
     padding: 6px 10px;
     min-width: 110px;
     min-height: 30px;
@@ -497,8 +528,8 @@ QComboBox:focus {{ border: 1px solid {accent}; }}
 QComboBox:hover::down-arrow {{ border-top-color: {accent}; }}
 QComboBox::drop-down {{
     border: none;
-    border-top-right-radius: {{r_md}};
-    border-bottom-right-radius: {{r_md}};
+    border-top-right-radius: {r_md};
+    border-bottom-right-radius: {r_md};
     width: 24px;
 }}
 QComboBox::down-arrow {{
@@ -518,7 +549,7 @@ QPlainTextEdit#log, QTextEdit#log {{
     background: {log_bg};
     color: {log_text};
     border: 1px solid {log_border};
-    border-radius: {{r_md}};
+    border-radius: {r_md};
     padding: 10px;
     font-family: "Consolas", "SF Mono", "Microsoft YaHei Mono", monospace;
     font-size: 12px;
@@ -527,8 +558,8 @@ QPlainTextEdit#log QScrollBar::handle:vertical, QTextEdit#log QScrollBar::handle
 QPlainTextEdit#log QScrollBar::handle:vertical:hover, QTextEdit#log QScrollBar::handle:vertical:hover {{ background: #3c4756; }}
 
 /* ---------- menu ---------- */
-QMenu {{ background: {bg2}; border: 1px solid {border}; border-radius: {{r_md}}; padding: 6px; color: {text}; }}
-QMenu::item {{ padding: 7px 18px 7px 12px; border-radius: {{r_sm}}; }}
+QMenu {{ background: {bg2}; border: 1px solid {border}; border-radius: {r_md}; padding: 6px; color: {text}; }}
+QMenu::item {{ padding: 7px 18px 7px 12px; border-radius: {r_sm}; }}
 QMenu::item:selected {{ background: {accent}; color: #fff; }}
 
 /* ---------- asset cards ---------- */
@@ -538,7 +569,7 @@ QMenu::item:selected {{ background: {accent}; color: #fff; }}
 AssetCard {{
     background: {card};
     border: 1px solid {border};
-    border-radius: {{r_lg}};
+    border-radius: {r_lg};
     box-shadow: 0 1px 2px {shadow_sm};
 }}
 AssetCard:hover {{ border: 1px solid {border2}; box-shadow: 0 8px 20px {shadow_md}; }}
@@ -574,13 +605,13 @@ QLabel#colltitle {{
 QFrame#batchbar {{
     background: {bg2};
     border: 1px solid {border2};
-    border-radius: {{r_pill}};
+    border-radius: {r_pill};
 }}
 QFrame#lightbox {{
     background: {overlay};
 }}
 QFrame#insphero {{
-    border-radius: {{r_lg}};
+    border-radius: {r_lg};
     border: 1px solid {border};
 }}
 QFrame#sidebar {{
@@ -594,7 +625,7 @@ QFrame#navsection {{
 /* Collapsible sidebar section header — hover affordance so the bare titles
    (Tags / Smart Folders / Management) read as interactive rows, not text. */
 QWidget#navheader {{
-    border-radius: {{r_sm}};
+    border-radius: {r_sm};
     padding: 2px 4px;
 }}
 QWidget#navheader:hover {{ background: {panel2}; }}
@@ -609,7 +640,7 @@ QPushButton#libbtn {{
     background: transparent;
     color: {muted};
     border: none;
-    border-radius: {{r_md}};
+    border-radius: {r_md};
     padding: 6px 8px 6px 10px;
     font-weight: 700;
     font-size: 13px;
@@ -622,12 +653,12 @@ QTreeWidget#foldertree {{
     background: {panel2};
     color: {text};
     border: 1px solid {border};
-    border-radius: {{r_md}};
+    border-radius: {r_md};
     outline: none;
     padding: 4px;
 }}
 QTreeWidget#foldertree::item {{
-    border-radius: {{r_sm}};
+    border-radius: {r_sm};
     padding: 4px 2px;
     margin: 1px 0px;
     min-height: 22px;
@@ -642,7 +673,7 @@ QTableWidget#detailstable {{
     background: {panel2};
     color: {text};
     border: 1px solid {border};
-    border-radius: {{r_sm}};
+    border-radius: {r_sm};
     gridline-color: transparent;
     outline: none;
     font-size: 13px;
@@ -698,16 +729,16 @@ QFrame#seph {{
    refresh with the QApplication QSS on theme switch. ---------- */
 QLabel#cardtier {{
     background: rgba(10,20,30,.55); color: #ffffff;
-    border-radius: {{r_sm}}; padding: 3px 8px;
+    border-radius: {r_sm}; padding: 3px 8px;
     font-size: 11px; font-weight: 700;
 }}
 QPushButton#cardfav {{
     background: rgba(10,20,30,.45);
     border: none;
-    border-radius: {{r_md}};
+    border-radius: {r_md};
 }}
 QPushButton#cardcheck {{
-    border-radius: {{r_md}};
+    border-radius: {r_md};
     background: rgba(255,255,255,.9);
     border: 2px solid rgba(255,255,255,.9);
 }}
@@ -716,7 +747,7 @@ QPushButton#cardcheck[selected="true"] {{
     border: 1px solid {accent};
 }}
 QLabel#cardtypechip {{
-    border-radius: {{r_sm}}; padding: 2px 7px;
+    border-radius: {r_sm}; padding: 2px 7px;
     font-size: 11px; font-weight: 600;
 }}
 QLabel#cardtypechip[type="Niagara"]   {{ background: rgba(14,165,233,.14);  color: #0ea5e9; }}
@@ -729,7 +760,7 @@ QLabel#cardbpchip {{
     background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
         stop:0 rgba(99,91,255,0.14), stop:1 rgba(0,163,255,0.08));
     color: {accent};
-    border-radius: {{r_sm}}; padding: 2px 6px;
+    border-radius: {r_sm}; padding: 2px 6px;
     font-size: 10px; font-weight: 700;
 }}
 QLabel#cardemptylabel {{
@@ -747,7 +778,7 @@ QLabel#cardtag {{
    QSS so a dark/light switch recolors the badge + buttons too. ---------- */
 QLabel#batchcount {{
     font-weight: 700; color: {accent}; font-size: 13px;
-    border-radius: {{r_sm}}; padding: 3px 9px;
+    border-radius: {r_sm}; padding: 3px 9px;
     background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
         stop:0 rgba(99,91,255,0.12), stop:1 rgba(0,163,255,0.08));
 }}
@@ -757,7 +788,7 @@ QLabel#batchcount {{
 QPushButton#inspexp {{
     background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
         stop:0 {accent}, stop:1 {accent2});
-    color: #ffffff; border: none; border-radius: {{r_md}};
+    color: #ffffff; border: none; border-radius: {r_md};
     padding: 7px; font-weight: 600; font-size: 12px;
 }}
 QPushButton#inspexp:hover {{ background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
@@ -773,7 +804,7 @@ QLabel#inspbpchip {{
 /* Rating stars — token-driven so they follow the theme switch (previously had
    no rule at all and rendered as default purple buttons). */
 QPushButton#star {{
-    background: transparent; border: none; border-radius: {{r_sm}};
+    background: transparent; border: none; border-radius: {r_sm};
     color: {muted2}; font-size: 18px; padding: 0;
     min-width: 28px; min-height: 28px; max-width: 28px; max-height: 28px;
     qproperty-text-align: center;
@@ -785,7 +816,7 @@ QPushButton#star[on="true"] {{ color: {amber}; }}
 QPushButton#batchbtnprimary {{
     background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
         stop:0 {accent}, stop:1 {accent2});
-    color: #ffffff; border: none; border-radius: {{r_md}};
+    color: #ffffff; border: none; border-radius: {r_md};
     padding: 0 14px; font-weight: 600; font-size: 12px;
 }}
 QPushButton#batchbtnprimary:hover {{ background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
@@ -793,13 +824,13 @@ QPushButton#batchbtnprimary:hover {{ background: qlineargradient(x1:0, y1:0, x2:
 QPushButton#batchbtnprimary:pressed {{ background: {accent_pressed}; color: #ffffff; }}
 QPushButton#batchbtndanger {{
     background: {bg2};     color: {bad}; border: 1px solid {border2};
-    border-radius: {{r_md}}; padding: 0 14px; font-weight: 600; font-size: 12px;
+    border-radius: {r_md}; padding: 0 14px; font-weight: 600; font-size: 12px;
 }}
 QPushButton#batchbtndanger:hover {{ background: rgba(232,93,93,.10); border-color: {bad}; }}
 QPushButton#batchbtndanger:pressed {{ background: rgba(232,93,93,.18); }}
 QPushButton#batchbtn {{
     background: {bg2}; color: {text}; border: 1px solid {border2};
-    border-radius: {{r_md}}; padding: 0 14px; font-weight: 600; font-size: 12px;
+    border-radius: {r_md}; padding: 0 14px; font-weight: 600; font-size: 12px;
 }}
 QPushButton#batchbtn:hover {{ background: {panel2}; border-color: {accent}; }}
 QPushButton#batchbtn:pressed {{ background: {card_sel}; }}
@@ -817,14 +848,14 @@ QFrame#toolbar {{
 QFrame#segctl {{
     background: {panel2};
     border: 1px solid {border};
-    border-radius: {{r_md}};
+    border-radius: {r_md};
     padding: 2px;
 }}
 QPushButton#seg {{
     background: transparent;
     color: {text};
     border: none;
-    border-radius: {{r_md}};
+    border-radius: {r_md};
     padding: 0 12px;
     font-size: 12px;
     font-weight: 600;
@@ -841,7 +872,7 @@ QPushButton#seg:pressed {{ background: {border}; }}
 QFrame#projpill {{
     background: {panel2};
     border: 1px solid {border};
-    border-radius: {{r_pill}};
+    border-radius: {r_pill};
 }}
 QFrame#sep {{
     background: {border};
@@ -854,12 +885,12 @@ QFrame#sep {{
 QFrame#sidehero {{
     background: {bg2};
     border: 1px solid {border};
-    border-radius: {{r_lg}};
+    border-radius: {r_lg};
 }}
 QLabel#heromono {{
     color: {accent};
     background: transparent;
-    border-radius: {{r_sm}};
+    border-radius: {r_sm};
     font-size: 14px;
     font-weight: 800;
     padding: 2px 8px;

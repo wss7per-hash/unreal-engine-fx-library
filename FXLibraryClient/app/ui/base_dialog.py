@@ -1,0 +1,38 @@
+# app/ui/base_dialog.py -- shared base class for every in-app dialog.
+#
+# WHY THIS EXISTS
+# ---------------
+# On Windows + PySide6, modal dialogs opened via exec() sometimes fail to
+# inherit the QApplication-wide stylesheet: child controls silently fall
+# back to the native platform style. The user saw a stock white Win32
+# combo box inside the Settings dialog while the main window was fully
+# themed. Re-applying the application stylesheet directly on the dialog
+# forces the cascade locally, and is harmless when inheritance already
+# works (same rules, same specificity).
+#
+# All dialogs should inherit BaseDialog instead of QDialog and use
+# self.tok() for any color that must follow the active theme — never
+# hardcode hex values (that froze the About dialog in a half-dark palette).
+
+from PySide6.QtWidgets import QDialog, QApplication
+
+from app.style import THEMES, resolve_theme
+
+
+class BaseDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        app = QApplication.instance()
+        if app is not None and app.styleSheet():
+            self.setStyleSheet(app.styleSheet())
+
+    def tok(self):
+        """Active theme token set (falls back to the parent window's theme)."""
+        theme = getattr(self.parent(), "theme", None)
+        if theme not in ("light", "dark"):
+            try:
+                from app import config as cfg
+                theme = resolve_theme(cfg.load().get("theme", "auto"))
+            except Exception:
+                theme = "light"
+        return THEMES.get(theme, THEMES["light"])

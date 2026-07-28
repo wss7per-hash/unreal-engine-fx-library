@@ -1,6 +1,6 @@
 # app/ui/settings_dialog.py -- configure language, theme and FX-only import.
 
-from PySide6.QtWidgets import (QDialog, QFormLayout,
+from PySide6.QtWidgets import (QFormLayout,
                                QVBoxLayout, QHBoxLayout,
                                QDialogButtonBox, QComboBox, QCheckBox,
                                QLineEdit, QPushButton, QFileDialog, QLabel)
@@ -9,9 +9,10 @@ from PySide6.QtCore import Qt
 from app import config as cfg
 from app.i18n import tr
 from app.version import __version__
+from app.ui.base_dialog import BaseDialog
 
 
-class SettingsDialog(QDialog):
+class SettingsDialog(BaseDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle(tr("settings_title"))
@@ -63,6 +64,17 @@ class SettingsDialog(QDialog):
         form.addRow(tr("settings_ue_path"), ue_row)
 
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        # Give the box buttons the app's design-system identities — without an
+        # objectName they get the generic solid-purple QPushButton rule and
+        # clash with everything else in the dialog.
+        ok_btn = buttons.button(QDialogButtonBox.Ok)
+        if ok_btn is not None:
+            ok_btn.setObjectName("primary")
+            ok_btn.setMinimumWidth(88)
+        cancel_btn = buttons.button(QDialogButtonBox.Cancel)
+        if cancel_btn is not None:
+            cancel_btn.setObjectName("secondary")
+            cancel_btn.setMinimumWidth(88)
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
 
@@ -72,7 +84,8 @@ class SettingsDialog(QDialog):
         layout.addLayout(form)
         layout.addStretch(1)
         ver_lbl = QLabel("FX Library v%s" % __version__)
-        ver_lbl.setStyleSheet("color: #8a8fa3;")
+        ver_lbl.setStyleSheet("background: transparent; color: %s;"
+                              % self.tok()["muted2"])
         ver_lbl.setAlignment(Qt.AlignLeft)
         bottom = QHBoxLayout()
         bottom.addWidget(ver_lbl)
