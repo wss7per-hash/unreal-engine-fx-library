@@ -293,7 +293,7 @@ class MainWindow(QMainWindow):
         self.setAcceptDrops(True)
 
         self.cfg = cfg.load()
-        self.theme = "dark"  # dark-only: no light/theme toggle
+        self.theme = resolve_theme(self.cfg.get("theme", "auto"))
         self.lang = self.cfg.get("language", "auto")
         if self.lang not in ("zh", "en"):
             self.lang = "zh"
@@ -1419,6 +1419,7 @@ class MainWindow(QMainWindow):
         frame.setStyleSheet("background:transparent; border:none;")
         self._insp_row_labels = []
         w = QWidget()
+        w.setObjectName("inspcontainer")
         w.setMinimumWidth(260)
         w.setStyleSheet("background:transparent;")
         v = QVBoxLayout(w)
@@ -1439,6 +1440,8 @@ class MainWindow(QMainWindow):
 
         # pad
         pad = QWidget()
+        pad.setObjectName("insppad")
+        self.insp_pad = pad
         pl = QVBoxLayout(pad)
         pl.setContentsMargins(16, 16, 16, 22)
         pl.setSpacing(14)
@@ -1931,6 +1934,19 @@ class MainWindow(QMainWindow):
         self._round_lineedit(self.search)
         if hasattr(self, "insp_tag_input"):
             self._round_lineedit(self.insp_tag_input)
+        # Inspector panel inner container background (per-widget setStyleSheet
+        # is NOT updated by global QSS round-trip — without this the pad stays
+        # dark when switching to light theme).
+        _tok = self.tok()
+        if hasattr(self, "insp_pad"):
+            self.insp_pad.setStyleSheet("background:%s;" % _tok["bg2"])
+        # Inspector button icons (set once at creation with theme token —
+        # must refresh on switch or they stay dark-colored in light mode).
+        for _name, _ic in (("insp_open", "open"), ("insp_copy", "copy"),
+                           ("insp_fav", "fav"), ("insp_set", "thumbnail")):
+            _btn = getattr(self, _name, None)
+            if _btn:
+                _btn.setIcon(icon(_ic, _tok["text"], 14))
         # details table reads its palette via the global #detailstable token
         self._update_insp_row_labels()
         if self._current_asset:
