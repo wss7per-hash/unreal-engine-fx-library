@@ -1478,9 +1478,10 @@ class MainWindow(QMainWindow):
         self.insp_note.textChanged.connect(self._on_note_changed)
         pl.addWidget(self.insp_note)
 
-        # source actions (jump back to the real file on disk) — each
-        # action gets a real icon so it reads as a button, not as flat
-        # text. The setIcon() call uses the existing icon() helper.
+        # ---- inspector action buttons (single column, all the same width) ----
+        # Previously a QGridLayout mixed 2-col rows with 1-col rows which read
+        # as "messy" once the panel got narrow. Single column is consistent
+        # and matches the file/folder/source rows above.
         self.insp_open = QPushButton("  " + tr("open_location_btn"))
         self.insp_open.setObjectName("secondary")
         self.insp_open.setIcon(icon("open", THEMES.get(self.theme, THEMES["light"])["text"], 14))
@@ -1495,34 +1496,35 @@ class MainWindow(QMainWindow):
         self.insp_copy.clicked.connect(lambda: self._copy_path(self._current_asset))
         pl.addWidget(self.insp_copy)
 
-        # actions
-        actions = QGridLayout()
-        actions.setSpacing(8)
+        # favorite + thumbnail (both #secondary so they get the same look
+        # as open/copy above)
         self.insp_fav = QPushButton("  " + tr("add_fav"))
         self.insp_fav.setObjectName("secondary")
         self.insp_fav.setIcon(icon("fav", THEMES.get(self.theme, THEMES["light"])["text"], 14))
         self.insp_fav.setIconSize(QSize(14, 14))
         self.insp_fav.clicked.connect(self._insp_toggle_fav)
+        pl.addWidget(self.insp_fav)
         self.insp_set = QPushButton("  " + tr("set_thumb"))
         self.insp_set.setObjectName("secondary")
         self.insp_set.setIcon(icon("thumbnail", THEMES.get(self.theme, THEMES["light"])["text"], 14))
         self.insp_set.setIconSize(QSize(14, 14))
         self.insp_set.clicked.connect(lambda: self._set_manual_thumb(self._current_asset))
+        pl.addWidget(self.insp_set)
+
+        # export-to-UE + export-fxpack keep the gradient CTA look (#inspexp),
+        # import uses #secondary so the gradient isn't repeated 3x.
         self.insp_exp = QPushButton("⤓ " + tr("exp_ue"))
         self.insp_exp.setObjectName("inspexp")
         self.insp_exp.clicked.connect(lambda: self._export_one(self._current_asset))
-        self.insp_imp = QPushButton("⤒ " + tr("imp_pack"))
-        self.insp_imp.setObjectName("secondary")
-        self.insp_imp.clicked.connect(self._import)
-        actions.addWidget(self.insp_fav, 0, 0)
-        actions.addWidget(self.insp_set, 0, 1)
+        pl.addWidget(self.insp_exp)
         self.insp_pack = QPushButton("⤓ " + tr("exp_fxpack"))
         self.insp_pack.setObjectName("inspexp")
         self.insp_pack.clicked.connect(lambda: self._export_fxpack_one(self._current_asset))
-        actions.addWidget(self.insp_exp, 1, 0)
-        actions.addWidget(self.insp_pack, 1, 1)
-        actions.addWidget(self.insp_imp, 2, 0, 1, 2)
-        pl.addLayout(actions)
+        pl.addWidget(self.insp_pack)
+        self.insp_imp = QPushButton("⤒ " + tr("imp_pack"))
+        self.insp_imp.setObjectName("secondary")
+        self.insp_imp.clicked.connect(self._import)
+        pl.addWidget(self.insp_imp)
 
         pl.addStretch(1)
         v.addWidget(pad)

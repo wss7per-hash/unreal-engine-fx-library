@@ -843,11 +843,42 @@ try:
         ok("style_no_dead_color_swatch", "stale #color_swatch selector removed")
     else:
         bad("style_no_dead_color_swatch", "stale #color_swatch selector still present")
-    # P0-2: explicit :focus outline present (keyboard accessibility)
+    # P0-2: explicit :focus outline present (keyboard accessibility).
+    # The outline ring is intentionally kept only for the gradient CTAs
+    # (#primary / #toolbarprimary / #inspexp) and the base QPushButton
+    # — toolbar / inspector action buttons show focus via border-color +
+    # background tint instead, because the 2px outer ring on every
+    # focused button read as an "ugly blue box" (user feedback).
     if "outline: 2px solid {accent}" in style_text and "outline: none;" in style_text:
-        ok("focus_ring_visible", "explicit :focus outline added (keyboard accessibility)")
+        ok("focus_ring_visible", "explicit :focus outline present (keyboard a11y)")
     else:
         bad("focus_ring_visible", "focus outline rule missing in style.py")
+    # ROUND-19: focus on toolbar/inspector action buttons must NOT use
+    # the 2px outer ring — it should be a border-color + background tint.
+    # Check that the #act/:focus rule block (in the raw style.py source,
+    # with {{ / {accent} placeholders) contains the new focus style.
+    if "QPushButton#act:focus" in style_text:
+        _act_focus_idx = style_text.find("QPushButton#act:focus")
+        _act_focus_end = style_text.find("}}", _act_focus_idx)
+        _act_focus_block = style_text[_act_focus_idx:_act_focus_end if _act_focus_end > 0 else _act_focus_idx + 800]
+        if ("border: 1px solid {accent}" in _act_focus_block
+                and "outline: none" in _act_focus_block):
+            ok("focus_subtle_on_act",
+               "#act/:focus uses border-color + background tint, no outer ring")
+        else:
+            bad("focus_subtle_on_act",
+                "#act/:focus should use border-color focus (no 2px outline ring). Block: %r" % _act_focus_block[:300])
+    else:
+        bad("focus_subtle_on_act",
+            "#act/:focus rule missing from style.py")
+    # ROUND-19: inspector action buttons are in a single column (no
+    # QGridLayout that mixes 2-col + 1-col rows).
+    if "actions = QGridLayout()" in mw_src:
+        bad("inspector_single_column",
+            "inspector still uses QGridLayout (mixed 2-col/1-col rows are messy)")
+    else:
+        ok("inspector_single_column",
+           "inspector action buttons are in a single column")
     # P1-1: card shadow scale (sm at rest / md on hover / lg on select)
     if "box-shadow: 0 1px 2px {shadow_sm}" in style_text \
             and "box-shadow: 0 8px 20px {shadow_md}" in style_text \

@@ -56,18 +56,46 @@ QWidget {{
     color: {text};
     background: {bg};
 }}
-/* keyboard focus visibility (accessibility) */
-QPushButton:focus, QPushButton#icon:focus, QPushButton#lang:focus,
-QPushButton#seg:focus, QPushButton#tag:focus, QPushButton#act:focus,
-QPushButton#secondary:focus, QPushButton#inspexp:focus,
-QPushButton#danger:focus, QPushButton#batchbtnprimary:focus,
-QPushButton#batchbtndanger:focus {{
+/* ---------- keyboard focus (subtle; no ugly "blue box" around toolbar buttons) ----------
+   The previous version drew a 2px solid accent outline + 2px offset on every
+   focused button. After clicking any toolbar button, you got a harsh purple
+   ring around it that read as "I have a problem" rather than "I'm focused".
+   The new style keeps a 2px outline ring ONLY for the gradient CTAs (where
+   it's actually needed to show focus because the button is already accent-
+   colored), and for every other button the focus is shown by recoloring the
+   existing border to accent + a tiny background tint. */
+QPushButton#act:focus, QPushButton#secondary:focus, QPushButton#lang:focus,
+QPushButton#danger:focus, QPushButton#batchbtn:focus,
+QPushButton#batchbtnprimary:focus, QPushButton#batchbtndanger:focus {{
+    border: 1px solid {accent};
+    color: {accent};
+    background: {accent_tint};
+    outline: none;
+}}
+QPushButton#icon:focus, QPushButton#iconghost:focus {{
+    border: 1px solid {accent};
+    color: {accent};
+    background: {panel2};
+    outline: none;
+}}
+QPushButton#seg:focus, QPushButton#tag:focus, QPushButton#nav:focus {{
+    /* Segmented / nav buttons keep their colored :checked state; only the
+       unchecked ones need a focus ring. */
+    border-color: {accent};
+    color: {accent};
+    outline: none;
+}}
+/* Primary gradient CTAs: keep the outer outline ring — the button is
+   already accent-colored so a focus state must come from outside. */
+QPushButton:focus, QPushButton#primary:focus, QPushButton#toolbarprimary:focus,
+QPushButton#inspexp:focus {{
     outline: 2px solid {accent};
     outline-offset: 2px;
 }}
-/* Star rating buttons — never show focus ring (they're tap targets, not form fields) */
+/* Star rating + card fav: never show focus ring (they're tap targets, not form fields) */
 QPushButton#star:focus {{ outline: none; }}
 QPushButton#cardfav:focus {{ outline: none; }}
+/* Text inputs keep the outline ring (no border to recolor) */
 QLineEdit:focus, QComboBox:focus, QSpinBox:focus,
 QTextEdit:focus, QPlainTextEdit:focus {{
     outline: 2px solid {accent};
@@ -76,8 +104,7 @@ QTextEdit:focus, QPlainTextEdit:focus {{
 QAbstractScrollArea:focus, AssetCard:focus, QFrame:focus, QMainWindow:focus {{
     outline: none;
 }}
-/* checked widgets already show a colored border — don't also draw a focus ring
-   (prevents the "double box" the user saw on the active view segment). */
+/* Checked widgets already show a colored border — don't also draw a focus ring. */
 QPushButton:checked:focus, QPushButton#seg:focus:checked,
 QPushButton#nav:focus:checked, QPushButton#tag:focus:checked,
 QPushButton#icon:focus:checked, QPushButton#iconghost:focus:checked {{
