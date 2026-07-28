@@ -465,6 +465,7 @@ class MainWindow(QMainWindow):
     def _build_ui(self):
         QApplication.instance().setStyleSheet(get_stylesheet(self.theme))
         central = QWidget()
+        central.setAttribute(Qt.WA_StyledBackground, True)
         self.setCentralWidget(central)
         vmain = QVBoxLayout(central)
         vmain.setContentsMargins(0, 0, 0, 0)
@@ -557,6 +558,7 @@ class MainWindow(QMainWindow):
         tok = THEMES.get(self.theme, THEMES["light"])
         frame = QFrame()
         frame.setObjectName("sidebar")
+        frame.setAttribute(Qt.WA_StyledBackground, True)
         self.sidebar_frame = frame
         frame.setFixedWidth(240)
         outer = QVBoxLayout(frame)
@@ -1131,8 +1133,8 @@ class MainWindow(QMainWindow):
     def _build_main_area(self):
         frame = QFrame()
         frame.setObjectName("mainarea")
+        frame.setAttribute(Qt.WA_StyledBackground, True)
         self.main_area_frame = frame
-        frame.setStyleSheet("background:transparent;")
         v = QVBoxLayout(frame)
         v.setContentsMargins(0, 0, 0, 0)
         v.setSpacing(0)
@@ -1347,6 +1349,7 @@ class MainWindow(QMainWindow):
         # stacked: page0 = grid, page1 = details table
         self.content_stack = QStackedWidget()
         self.content_stack.setObjectName("contentstack")
+        self.content_stack.setAttribute(Qt.WA_StyledBackground, True)
         self.content_stack.addWidget(self.grid)
         self.content_stack.addWidget(self.details_table)
         # initial page + grid view-mode from saved config
@@ -1416,6 +1419,7 @@ class MainWindow(QMainWindow):
         frame = QScrollArea()
         frame.setWidgetResizable(True)
         frame.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        frame.setAttribute(Qt.WA_StyledBackground, True)
         # min-width 0 (not 280) so the auto-collapse actually reaches 0 instead
         # of leaving a blank 280px panel (F9).
         frame.setMinimumWidth(0)
@@ -1424,6 +1428,7 @@ class MainWindow(QMainWindow):
         w = QWidget()
         w.setObjectName("inspcontainer")
         w.setMinimumWidth(260)
+        w.setAttribute(Qt.WA_StyledBackground, True)
         w.setStyleSheet("background:transparent;")
         v = QVBoxLayout(w)
         v.setContentsMargins(0, 0, 0, 0)
@@ -1631,6 +1636,7 @@ class MainWindow(QMainWindow):
         tok = THEMES.get(self.theme, THEMES["light"])
         bar = QFrame()
         bar.setObjectName("batchbar")
+        bar.setAttribute(Qt.WA_StyledBackground, True)
         bar.setVisible(False)
         bar.setFixedHeight(48)
         bar.setMinimumWidth(520)
@@ -1937,19 +1943,29 @@ class MainWindow(QMainWindow):
         self._round_lineedit(self.search)
         if hasattr(self, "insp_tag_input"):
             self._round_lineedit(self.insp_tag_input)
-        # Inspector panel inner container background (per-widget setStyleSheet
-        # is NOT updated by global QSS round-trip — without this the pad stays
-        # dark when switching to light theme).
+        # ── Comprehensive container background refresh ──
+        # On Windows, QFrame/QWidget/QStackedWidget do NOT paint their QSS
+        # background without WA_StyledBackground.  Even with that flag, some
+        # containers (splitter children, scroll viewports) fall back to the
+        # native white background after a theme switch.  We force-refresh every
+        # major structural container so light/dark both render correctly.
         _tok = self.tok()
-        if hasattr(self, "insp_pad"):
-            self.insp_pad.setStyleSheet("background:%s;" % _tok["bg2"])
-        # Main area center panel: QStackedWidget / QScrollArea viewport often
-        # falls back to native white on Windows when theme switches. Force-refresh
-        # so the card grid area stays {bg} in dark mode and light in light mode.
-        if hasattr(self, "content_stack"):
-            self.content_stack.setStyleSheet("background:%s;" % _tok["bg"])
+        _bg = _tok["bg"]       # base window background
+        _bg2 = _tok["bg2"]     # panel / card background
+        # Sidebar (left panel)
+        if hasattr(self, "sidebar_frame"):
+            self.sidebar_frame.setStyleSheet("background:%s;" % _bg2)
+        # Main center area (card grid)
         if hasattr(self, "main_area_frame"):
-            self.main_area_frame.setStyleSheet("background:%s;" % _tok["bg"])
+            self.main_area_frame.setStyleSheet("background:%s;" % _bg)
+        if hasattr(self, "content_stack"):
+            self.content_stack.setStyleSheet("background:%s;" % _bg)
+        # Inspector (right panel) inner container
+        if hasattr(self, "insp_pad"):
+            self.insp_pad.setStyleSheet("background:%s;" % _bg2)
+        # Batch bar (bottom floating bar)
+        if hasattr(self, "batchbar"):
+            self.batchbar.setStyleSheet("background:%s; border:1px solid %s; border-radius:999px;" % (_bg2, _tok["border2"]))
         # Inspector button icons (set once at creation with theme token —
         # must refresh on switch or they stay dark-colored in light mode).
         for _name, _ic in (("insp_open", "open"), ("insp_copy", "copy"),

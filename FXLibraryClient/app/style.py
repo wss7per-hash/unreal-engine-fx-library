@@ -619,6 +619,12 @@ QFrame#sidebar {{
         stop:0 rgba(99,91,255,0.03), stop:1 {bg2});
     border-right: 1px solid {border};
 }}
+QFrame#mainarea {{
+    background: {bg};
+}}
+QStackedWidget#contentstack {{
+    background: {bg};
+}}
 QFrame#navsection {{
     background: transparent;
 }}
