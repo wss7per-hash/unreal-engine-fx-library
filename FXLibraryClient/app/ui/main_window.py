@@ -298,6 +298,12 @@ class MainWindow(QMainWindow):
         if self.lang not in ("zh", "en"):
             self.lang = "zh"
         self.db = self._open_db()
+        # One-time migration: soft-delete any leftover blueprint records from
+        # pre-ROUND-22 scans (the scanner now excludes blueprints, but old
+        # data may still be in the library).  Idempotent: safe every startup.
+        _bp_purged = self.db.purge_blueprints()
+        if _bp_purged:
+            self.log.append(tr("bp_purged", n=_bp_purged))
         self.bridge_dir = self.cfg.get("ue_bridge_dir") or None
         self._active_worker = None
         self._backfill_worker = None
@@ -870,6 +876,9 @@ class MainWindow(QMainWindow):
             if self.cfg.get("library_dir"):
                 try:
                     self.db = self._open_db()
+                    _bp = self.db.purge_blueprints()
+                    if _bp:
+                        self.log.append(tr("bp_purged", n=_bp))
                 except Exception as e:
                     self.log.append(tr("db_reopen_warning"), err=e)
             self._refresh_ue_state()
@@ -1146,17 +1155,7 @@ class MainWindow(QMainWindow):
         self.btn_health.clicked.connect(self._run_health_scan)
         self._round_button(self.btn_health)
         tb_actions.addWidget(self.btn_health)
-        tb_actions.addWidget(self._sep())  # cluster: library ops | selection
-
-        # Selection controls live here (not in the content header) so the
-        # header stays to just title + count + view segment. Always visible so
-        # users can select without first opening the (selection-gated) batch bar.
-        self.sel_all_btn = self._act_btn(tr("sel_all"), "select", self._on_select_all)
-        self.sel_invert_btn = self._act_btn(tr("sel_invert"), "refresh", self._on_invert_selection)
-        self.sel_clear_btn = self._act_btn(tr("clear_sel"), "clear", self._on_clear_selection)
-        tb_actions.addWidget(self.sel_all_btn)
-        tb_actions.addWidget(self.sel_invert_btn)
-        tb_actions.addWidget(self.sel_clear_btn)
+        tb_actions.addWidget(self._sep())  # cluster: library ops | search
 
         # separator: action cluster | search + settings
         tb_actions.addWidget(self._sep())
@@ -1207,7 +1206,6 @@ class MainWindow(QMainWindow):
         self.src_combo.setToolTip(tr("f_source_tip"))
         self.src_combo.addItem(tr("src_all"), "all")
         self.src_combo.addItem(tr("src_pure"), "pure")
-        self.src_combo.addItem(tr("src_blueprint"), "blueprint")
         self.src_combo.currentIndexChanged.connect(self._apply_filters)
         self.sort_combo = QComboBox()
         self.sort_combo.addItem(tr("s_name"), "name")
@@ -1614,6 +1612,10 @@ class MainWindow(QMainWindow):
         right.setSpacing(8)
         right.setAlignment(Qt.AlignVCenter)
 
+        self.b_select_all = self._batch_btn(tr("sel_all"))
+        self.b_select_all.clicked.connect(self._on_select_all)
+        self.b_invert = self._batch_btn(tr("sel_invert"))
+        self.b_invert.clicked.connect(self._on_invert_selection)
         self.b_export = self._batch_btn("⤓ " + tr("batch_export"), primary=True)
         self.b_export.clicked.connect(self._export_selected)
         self.b_trash = self._batch_btn(tr("batch_trash"), danger=True)
@@ -1633,6 +1635,8 @@ class MainWindow(QMainWindow):
         self.b_empty_trash.hide()
         self.b_trash.hide()
 
+        right.addWidget(self.b_select_all)
+        right.addWidget(self.b_invert)
         right.addWidget(self.b_export)
         right.addWidget(self.b_trash)
         right.addWidget(self.b_restore)
@@ -1920,7 +1924,6 @@ class MainWindow(QMainWindow):
         self.type_combo.setItemText(0, tr("f_type"))
         self.src_combo.setItemText(0, tr("src_all"))
         self.src_combo.setItemText(1, tr("src_pure"))
-        self.src_combo.setItemText(2, tr("src_blueprint"))
         self.src_combo.setToolTip(tr("f_source_tip"))
         self.sort_combo.setItemText(0, tr("s_name"))
         self.sort_combo.setItemText(1, tr("s_type"))
@@ -2318,8 +2321,6 @@ class MainWindow(QMainWindow):
             if t and a.type != t:
                 continue
             if src == "pure" and getattr(a, "blueprint", False):
-                continue
-            if src == "blueprint" and not getattr(a, "blueprint", False):
                 continue
             if q and q not in a.name.lower() and q not in a.object_path.lower() \
                     and q not in (a.tags or "").lower() \
@@ -3417,6 +3418,7 @@ class MainWindow(QMainWindow):
             a.deleted = True
             self.db.delete_asset(a.source_path)
             self.log.append(tr("moved_to_trash", name=a.name))
+        self.log.append(tr("batch_trash_done", n=len(assets)))
         if self._current_asset and self._current_asset.source_path in paths:
             self._current_asset = None
             self._show_empty_inspector()

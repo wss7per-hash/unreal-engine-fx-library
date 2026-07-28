@@ -409,6 +409,15 @@ class Database:
         self.conn.execute("DELETE FROM fx_assets WHERE deleted=1")
         self.conn.commit()
 
+    def purge_blueprints(self) -> int:
+        """Soft-delete all blueprint records (move to trash).  Idempotent: safe to
+        call on every startup; already-deleted blueprints are untouched.
+        Returns the number of records moved."""
+        cur = self.conn.execute(
+            "UPDATE fx_assets SET deleted=1 WHERE blueprint=1 AND deleted=0")
+        self.conn.commit()
+        return cur.rowcount
+
     # ---------- read ----------
     def get_assets(self, type=None, fav_only=False, tag=None, q=None,
                    blueprint=None, include_deleted=False) -> List[FXAsset]:

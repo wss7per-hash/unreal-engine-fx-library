@@ -74,18 +74,26 @@ try:
     else:
         ok("scan", "total=%s niagara=%s cascade=%s unknown=%s" % (
             scan_res.get("total"), scan_res.get("niagara"), scan_res.get("cascade"), scan_res.get("unknown")))
-        if scan_res.get("skipped") != 1:
-            bad("scan", "expected 1 skipped (non-FX), got %s" % scan_res.get("skipped"))
+        if scan_res.get("skipped") != 2:
+            bad("scan", "expected 2 skipped (non-FX + blueprint), got %s" % scan_res.get("skipped"))
     win._reload_library()
     n = len(win._all_assets)
     info("scan", "library assets=%d" % n)
-    if n != 4:
-        bad("scan", "expected 4 FX, got %d" % n)
+    if n != 3:
+        bad("scan", "expected 3 pure FX, got %d" % n)
 
     # ===== P0 Phase-0 regression: data-safety / robustness =====
     from app.database import Database as _DB
     from app.models import FXAsset as _FX
     _pdb = _DB(win._db_path, backup=False)
+
+    # regression: Blueprints are never ingested, and any pre-existing blueprint
+    # record at a scanned path is soft-deleted so it never leaks into the library.
+    bp_left = _pdb.get_assets(blueprint=True)
+    if bp_left:
+        bad("scan_no_blueprint", "blueprint assets leaked: %s" % [a.name for a in bp_left])
+    else:
+        ok("scan_no_blueprint", "no blueprint assets ingested or left in library")
 
     # P0-② rescan must NOT wipe user tags/favorite/rating/note
     try:
@@ -251,13 +259,13 @@ try:
     else:
         bad("type_filter", [c.type for c in win.grid.assets])
     win.type_combo.setCurrentIndex(0)
-    win.src_combo.setCurrentIndex(2)
-    win._apply_filters()
-    if all(getattr(c, "blueprint", False) for c in win.grid.assets) and vis():
-        ok("src_filter", "ok")
+    has_bp_opt = any(win.src_combo.itemData(i) == "blueprint" for i in range(win.src_combo.count()))
+    if has_bp_opt:
+        bad("src_filter", "blueprint source option should be removed")
     else:
-        bad("src_filter", [(c.name, c.blueprint) for c in win.grid.assets])
+        ok("src_filter", "no blueprint source option; src_combo=%d items" % win.src_combo.count())
     win.src_combo.setCurrentIndex(0)
+    win._apply_filters()
 
     # TAGS
     win._on_asset_activated(win._all_assets[0])
@@ -708,7 +716,23 @@ try:
         else:
             bad("sel_clear", "still %d selected" % len(win.grid.selected_assets()))
     except Exception as e:
-        bad("sel_controls", "exc %s\n%s" % (e, traceback.format_exc()))
+            bad("sel_controls", "exc %s\n%s" % (e, traceback.format_exc()))
+
+    # ROUND-23: selection buttons moved from toolbar to batch bar
+    if not hasattr(win, "sel_all_btn"):
+        ok("sel_btn_layout", "toolbar no longer has sel_all_btn")
+    else:
+        bad("sel_btn_layout", "sel_all_btn still in toolbar (should be removed)")
+    if hasattr(win, "b_select_all") and hasattr(win, "b_invert"):
+        ok("sel_batch_bar", "batch bar has b_select_all + b_invert")
+    else:
+        bad("sel_batch_bar", "batch bar missing select-all/invert buttons")
+
+    # ROUND-23: blueprint purge migration exists
+    if hasattr(win.db, "purge_blueprints"):
+        ok("bp_purge_method", "Database.purge_blueprints() exists")
+    else:
+        bad("bp_purge_method", "Database.purge_blueprints() missing")
 
     # Verify the bridge subprocess is launched headless and hidden on Windows.
     try:
