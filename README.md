@@ -18,10 +18,6 @@ unreal-engine-fx-library/
 │   ├── FXLibraryClient.spec     # PyInstaller 打包配置
 │   ├── run.bat / build_exe.bat # 运行 / 打包
 │   └── README.md
-├── FXLibraryPlugin/             # UE5 编辑器插件（C++ + Python），可选增强
-│   ├── Source/FXLibrary/        # C++：菜单 + 面板 + 缩略图导出
-│   ├── Content/Python/FXLibrary/# Python：导出 / 导入 / 列举 / 缩略图
-│   └── README.md
 ├── UE5特效库管理软件_设计文档.md   # 完整设计文档（PRD + 架构 + 数据模型）
 └── FXLibraryClient_软件介绍与使用手册.html  # 图文并茂的软件介绍与使用手册
 ```
@@ -66,7 +62,10 @@ build_exe.bat        # 产物：dist/FXLibraryClient/FXLibraryClient.exe
 
 ## 无头 UE 桥（可选）
 
-需要真实渲染缩略图或做引擎敏感操作时，客户端会**无头启动 UnrealEditor**（`-ExecutePythonScript`）运行 `bridge/` 下的脚本，完成后退出。桥脚本通过 JSON 与客户端通信。详见 `FXLibraryClient/README.md` 与 `FXLibraryPlugin/README.md`。
+需要真实渲染缩略图或做引擎敏感操作时，客户端会**无头启动 UnrealEditor**（`-ExecutePythonScript`）运行 `bridge/` 下的脚本，完成后退出。桥脚本通过 JSON 与客户端通信。详见 `FXLibraryClient/README.md`。
+
+> 历史说明：早期版本曾包含 UE 编辑器插件形态（`FXLibraryPlugin/`，C++ + Python）。
+> 该形态已于 v0.2 起废弃并从仓库删除（架构统一为「纯客户端 + 无头桥」），代码可在 git 历史中找回。
 
 ## 系统要求
 
@@ -78,7 +77,7 @@ build_exe.bat        # 产物：dist/FXLibraryClient/FXLibraryClient.exe
 
 - `UE5特效库管理软件_设计文档.md` — 完整设计文档
 - `FXLibraryClient_软件介绍与使用手册.html` — 图文并茂的软件介绍与使用手册（浏览器直接打开）
-- `FXLibraryClient/README.md` / `FXLibraryPlugin/README.md` — 各子项目说明
+- `FXLibraryClient/README.md` — 客户端子项目说明
 
 ## License
 
