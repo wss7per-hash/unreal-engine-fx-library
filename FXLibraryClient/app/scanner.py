@@ -54,14 +54,15 @@ def detect_type_offline(path: str):
     Returns (type, class_name, is_blueprint). Works for the vast majority of
     NiagaraSystem / ParticleSystem assets without launching UE.
 
-    Particle-system references take PRIORITY over non-FX class markers: a
-    Blueprint that *contains* a Niagara/Cascade system must still be recognized
-    as an effect, otherwise real FX nested inside Blueprints would be dropped.
-
     `is_blueprint` distinguishes the two flavors of detected FX:
       - False -> a "pure" FX asset (the file itself is a Niagara/Cascade system)
       - True  -> an FX *wrapped inside a Blueprint* (the file is a Blueprint that
                  *contains* a Niagara/Cascade system)
+
+    We only ingest PURE FX assets. A Blueprint that merely *references* an
+    FX system is NOT a VFX asset in its own right, so the scanner excludes it
+    (see run(): an `is_blueprint` verdict is skipped, and any pre-existing
+    library record for that path is soft-deleted to keep the library clean).
 
     A plain Blueprint/Material/Mesh with no embedded FX falls through to
     TYPE_UNKNOWN and is skipped by the FX-only scanner.
@@ -328,6 +329,15 @@ class ScannerWorker(QThread):
         for i, f in enumerate(files):
             try:
                 t, cn, is_bp = detect_type_offline(f)
+                # We only ingest PURE FX assets, never Blueprints that merely
+                # reference an FX system. Skip the Blueprint and soft-delete any
+                # pre-existing library record for this path (it sits in the
+                # trash and can be restored), keeping the library clean.
+                if self.fx_only and is_bp:
+                    db.delete_asset(f)
+                    skipped += 1
+                    self.progress.emit(i + 1, total, os.path.basename(f))
+                    continue
                 # FX-only mode: skip anything that is neither Niagara nor Cascade.
                 # IMPORTANT: never delete on a non-FX verdict. The heuristic
                 # reads only the first 8MB and can mis-classify large/compressed
