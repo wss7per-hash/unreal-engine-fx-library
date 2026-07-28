@@ -257,8 +257,17 @@ class CollapsibleSection(QWidget):
         self._chev.setText("▸" if c else "▾")
         if c:
             self._content.hide()
+            # The outer sidebar QVBoxLayout gives the Folders section
+            # stretch=1, so without this cap the section would still
+            # claim all leftover vertical space when collapsed — leaving
+            # a tall empty area below the chevron (the bug the user
+            # saw in the screenshot). Cap the section's own max height
+            # to the header so a collapsed section is exactly header-tall.
+            self.setMaximumHeight(self._header.sizeHint().height())
         else:
             self._content.show()
+            # QWIDGETSIZE_MAX == 16777215 — restore the default "no cap".
+            self.setMaximumHeight(16777215)
 
 
 # --------------------------------------------------------------------------
@@ -1348,6 +1357,7 @@ class MainWindow(QMainWindow):
         return s
 
     def _build_inspector(self):
+        from app.style import THEMES
         frame = QScrollArea()
         frame.setWidgetResizable(True)
         frame.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -1442,34 +1452,46 @@ class MainWindow(QMainWindow):
         self.insp_rating_row.addLayout(self.insp_rating)
         pl.addLayout(self.insp_rating_row)
 
-        # note
+        # note — give it a clear, helpful placeholder and a taller
+        # height so it reads as an editable input (not a tiny "…" box).
         self.insp_note_row = self._insp_row(tr("insp_note"))
         pl.addLayout(self.insp_note_row)
         self.insp_note = QTextEdit()
-        self.insp_note.setFixedHeight(80)
-        self.insp_note.setPlaceholderText("…")
+        self.insp_note.setObjectName("inspnote")
+        self.insp_note.setFixedHeight(100)
+        self.insp_note.setPlaceholderText(tr("insp_note_ph"))
         self.insp_note.textChanged.connect(self._on_note_changed)
         pl.addWidget(self.insp_note)
 
-        # source actions (jump back to the real file on disk)
-        self.insp_open = QPushButton(tr("open_location_btn"))
+        # source actions (jump back to the real file on disk) — each
+        # action gets a real icon so it reads as a button, not as flat
+        # text. The setIcon() call uses the existing icon() helper.
+        self.insp_open = QPushButton("  " + tr("open_location_btn"))
         self.insp_open.setObjectName("secondary")
+        self.insp_open.setIcon(icon("open", THEMES.get(self.theme, THEMES["light"])["text"], 14))
+        self.insp_open.setIconSize(QSize(14, 14))
         self.insp_open.clicked.connect(lambda: self._open_location(self._current_asset))
         self.insp_open.setToolTip(tr("open_location_btn"))
         pl.addWidget(self.insp_open)
-        self.insp_copy = QPushButton(tr("copy_path_btn"))
+        self.insp_copy = QPushButton("  " + tr("copy_path_btn"))
         self.insp_copy.setObjectName("secondary")
+        self.insp_copy.setIcon(icon("copy", THEMES.get(self.theme, THEMES["light"])["text"], 14))
+        self.insp_copy.setIconSize(QSize(14, 14))
         self.insp_copy.clicked.connect(lambda: self._copy_path(self._current_asset))
         pl.addWidget(self.insp_copy)
 
         # actions
         actions = QGridLayout()
         actions.setSpacing(8)
-        self.insp_fav = QPushButton(tr("add_fav"))
+        self.insp_fav = QPushButton("  " + tr("add_fav"))
         self.insp_fav.setObjectName("secondary")
+        self.insp_fav.setIcon(icon("fav", THEMES.get(self.theme, THEMES["light"])["text"], 14))
+        self.insp_fav.setIconSize(QSize(14, 14))
         self.insp_fav.clicked.connect(self._insp_toggle_fav)
-        self.insp_set = QPushButton(tr("set_thumb"))
+        self.insp_set = QPushButton("  " + tr("set_thumb"))
         self.insp_set.setObjectName("secondary")
+        self.insp_set.setIcon(icon("thumbnail", THEMES.get(self.theme, THEMES["light"])["text"], 14))
+        self.insp_set.setIconSize(QSize(14, 14))
         self.insp_set.clicked.connect(lambda: self._set_manual_thumb(self._current_asset))
         self.insp_exp = QPushButton("⤓ " + tr("exp_ue"))
         self.insp_exp.setObjectName("inspexp")

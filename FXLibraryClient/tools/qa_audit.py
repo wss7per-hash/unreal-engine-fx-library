@@ -1908,6 +1908,123 @@ try:
     except Exception as e:
         bad("secondary_uses_panel2", "exc %s" % e)
 
+    # ---- ROUND-17: collapsible cap + mouse-transparent children + note QSS ----
+    try:
+        import re as _re
+        from app.style import get_stylesheet
+        from PySide6.QtCore import Qt
+        # (1) CollapsibleSection.set_collapsed must cap the section's own
+        # maximumHeight to the header height so the outer stretch=1 doesn't
+        # leave a tall empty area below the chevron when collapsed.
+        _mw_src = open("app/ui/main_window.py", encoding="utf-8").read()
+        if ("setMaximumHeight(self._header.sizeHint().height())"
+                in _mw_src and "setMaximumHeight(16777215)" in _mw_src):
+            ok("collapsible_caps_height_on_collapse",
+               "CollapsibleSection caps max height on collapse (no empty area)")
+        else:
+            bad("collapsible_caps_height_on_collapse",
+                "CollapsibleSection missing max-height cap")
+        # (2) AssetCard children must be mouse-transparent so the first
+        # click on the thumbnail/body reaches the card (not consumed by
+        # a QLabel). Guards against the "click twice to select" regression.
+        # Count actual setAttribute() call sites (regex excludes comments).
+        _ag_src = open("app/ui/asset_grid.py", encoding="utf-8").read()
+        _trans_calls = _re.findall(
+            r"setAttribute\(\s*Qt\.WA_TransparentForMouseEvents", _ag_src)
+        # Expect 3 call sites: (thumb,tier,engine_badge) loop, (name,chip,tag)
+        # loop, and the conditional bp_chip line. bp_chip may be absent if
+        # the asset isn't Blueprint, but the call site is still in the code.
+        if len(_trans_calls) >= 3:
+            ok("card_children_mouse_transparent",
+               "AssetCard has %d WA_TransparentForMouseEvents setAttribute call sites" % len(_trans_calls))
+        else:
+            bad("card_children_mouse_transparent",
+                "Only %d setAttribute call sites; expected >=3" % len(_trans_calls))
+        # (3) mousePressEvent must defer setFocus to a 0-timer so the
+        # focus change doesn't preempt the selection/activation.
+        if "QTimer.singleShot(0, lambda: self.setFocus(Qt.MouseFocusReason))" in _ag_src:
+            ok("card_defers_focus_on_press",
+               "AssetCard defers setFocus via QTimer.singleShot(0)")
+        else:
+            bad("card_defers_focus_on_press",
+                "AssetCard mousePressEvent does not defer setFocus")
+        # (4) QSS must include the new #inspnote rule with a visible border.
+        # NOTE: the radius tokens ({{r_md}} etc.) are intentionally left as
+        # literal {r_XX} in the formatted output (a pre-existing style.py
+        # quirk), so a brace-counting regex like \{[^}]+\} mis-captures the
+        # rule. Use a fixed-size chunk after the selector instead — the
+        # rule is well under 500 chars.
+        _sty2 = get_stylesheet("dark")
+        _idx = _sty2.find("QTextEdit#inspnote")
+        if _idx >= 0:
+            _note_chunk = _sty2[_idx:_idx + 500]
+            if "border: 1.5px solid" in _note_chunk and "padding: 10px 12px" in _note_chunk:
+                ok("inspnote_qss_has_border",
+                   "QTextEdit#inspnote has 1.5px border + 10/12 padding (visible input)")
+            else:
+                bad("inspnote_qss_has_border",
+                    "QTextEdit#inspnote chunk missing border/padding: %r" % _note_chunk[:200])
+        else:
+            bad("inspnote_qss_has_border", "QTextEdit#inspnote selector not found in QSS")
+        # (5) #secondary must have the strengthened padding/min-height/font-weight.
+        _idx2 = _sty2.find("QPushButton#secondary {")
+        if _idx2 >= 0:
+            _sec2_chunk = _sty2[_idx2:_idx2 + 500]
+            if ("min-height: 20px" in _sec2_chunk
+                    and "font-weight: 600" in _sec2_chunk
+                    and "padding: 7px 14px" in _sec2_chunk):
+                ok("secondary_strengthened",
+                   "#secondary has min-height 20 + font-weight 600 + padding 7/14")
+            else:
+                bad("secondary_strengthened",
+                    "#secondary chunk missing strengthened props: %r" % _sec2_chunk[:300])
+        else:
+            bad("secondary_strengthened", "QPushButton#secondary rule not found")
+        # (6) insp_note must use the helpful i18n placeholder (not "...").
+        if "tr(\"insp_note_ph\")" in _mw_src and 'insp_note_ph' in open("app/i18n.py", encoding="utf-8").read():
+            ok("insp_note_helpful_placeholder",
+               "inspector note uses i18n 'insp_note_ph' placeholder")
+        else:
+            bad("insp_note_helpful_placeholder",
+                "insp_note placeholder not wired to i18n 'insp_note_ph'")
+        # (7) CollapsibleSection visual cap actually works headless: a
+        # collapsed section's height must equal its header's sizeHint
+        # height (i.e. NOT the leftover stretch space).
+        from app.ui.main_window import CollapsibleSection as _CS
+        from PySide6.QtWidgets import QWidget as _QW
+        _hdr = _QW()
+        _body = _QW()
+        _body.setFixedHeight(400)  # pretend content is tall
+        _sec = _CS("test", _body)
+        _sec.set_collapsed(True)
+        _expected = _sec._header.sizeHint().height()
+        _actual = _sec.maximumHeight()
+        if _actual <= _expected + 1:
+            ok("collapsible_cap_works_headless",
+               "collapsed section maxH=%d <= header sizeHint=%d" % (_actual, _expected))
+        else:
+            bad("collapsible_cap_works_headless",
+                "collapsed maxH=%d > header sizeHint=%d" % (_actual, _expected))
+        # (8) AssetCard child mouse-transparency: build a card and verify
+        # the thumb / tier / chip / tag have the attribute set. This is
+        # the runtime check that backs the source-level count above.
+        try:
+            from app.models import FXAsset
+            _asset = FXAsset(source_path="x", name="qa", type="Niagara")
+            from app.ui.asset_grid import AssetCard
+            _card = AssetCard(_asset, index=0, view_mode="medium")
+            for _name, _w in (("thumb", _card.thumb), ("tier", _card.tier),
+                                ("chip", _card.chip), ("tag", _card.tag)):
+                if not _w.testAttribute(Qt.WA_TransparentForMouseEvents):
+                    raise AssertionError("%s missing WA_TransparentForMouseEvents" % _name)
+            ok("card_child_transparency_runtime",
+               "AssetCard thumb/tier/chip/tag have WA_TransparentForMouseEvents at runtime")
+            _card.deleteLater()
+        except Exception as _e:
+            bad("card_child_transparency_runtime", "exc %s" % _e)
+    except Exception as e:
+        bad("round17_checks", "exc %s" % e)
+
     log("=== REPORT ===")
     fails = [r for r in results if r[0] == "FAIL"]
     passes = [r for r in results if r[0] == "PASS"]

@@ -345,7 +345,7 @@ class AssetCard(QWidget):
         # button. The card itself is the click target; Ctrl+click toggles
         # selection without firing the activated signal.
 
-        # fav (top-right)
+        # fav (top-right) — KEEP interactive (it's a real button).
         self.fav = QPushButton(self.thumb)
         self.fav.setObjectName("cardfav")
         self.fav.setFixedSize(28, 28)
@@ -353,6 +353,17 @@ class AssetCard(QWidget):
         self._style_fav()
         # fav shows on hover or when already favorited (reduces grid noise)
         self.fav.setHidden(not self._fav)
+
+        # Mouse-transparency for visual children. Without this, the first
+        # click on the thumbnail area was being consumed by the QLabel
+        # (Qt delivers the press to the deepest widget under the cursor
+        # and QWidget's default mousePressEvent accepts the event, so it
+        # never reached the card) — making the user click TWICE to select
+        # a different card. Setting WA_TransparentForMouseEvents on every
+        # non-interactive child lets the press fall through to the card
+        # itself. Only the fav QPushButton remains interactive.
+        for child in (self.thumb, self.tier, self.engine_badge):
+            child.setAttribute(Qt.WA_TransparentForMouseEvents, True)
 
         # selection highlight border (painted in paintEvent)
         self._sel_color = QColor(THEMES.get(self._theme, THEMES["light"])["accent"])
@@ -403,6 +414,16 @@ class AssetCard(QWidget):
 
         bl.addWidget(self.name)
         bl.addLayout(meta)
+        # Body region mouse-transparency: the name / chip / tag / bp_chip
+        # QLabels are decorative — they must NOT swallow the first click
+        # (otherwise the user has to click twice to select a different
+        # card). Pass presses through to the card via the same mechanism
+        # used for the thumbnail above.
+        for child in (self.name, self.chip, self.tag):
+            child.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+        bp = getattr(self, "bp_chip", None)
+        if bp is not None:
+            bp.setAttribute(Qt.WA_TransparentForMouseEvents, True)
         v.addWidget(body)
 
     def _tier_visible(self):
@@ -521,17 +542,21 @@ class AssetCard(QWidget):
                 parent_grid._shift_select_to(self.index)
         else:
             # Normal click: select this card, deselect others.
-            # Grab focus immediately so the first click focuses the card
-            # (and fires activation) rather than the OS/Qt consuming it just
-            # to move focus off a focused inspector text field — which is
-            # what previously forced users to click twice to see details.
-            self.setFocus(Qt.MouseFocusReason)
+            # The selection+activation must run FIRST so the user sees
+            # the card light up and the inspector update on the very
+            # first click. The setFocus() call is deferred via a
+            # singleShot(0) so the focus change (FocusOut on the
+            # inspector's note QTextEdit) happens AFTER the current
+            # event finishes — preventing the "first click only
+            # transfers focus" double-click behaviour the user saw
+            # with the previous synchronous setFocus.
             parent_grid = self._find_grid()
             if parent_grid:
                 parent_grid._clear_selection(keep=self)
             self.set_selected(True)
             self.toggled.emit(self.asset, True)
             self.activated.emit(self.asset)
+            QTimer.singleShot(0, lambda: self.setFocus(Qt.MouseFocusReason))
 
     def mouseDoubleClickEvent(self, e):
         if e.button() == Qt.LeftButton:

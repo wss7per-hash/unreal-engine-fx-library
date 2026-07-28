@@ -13,6 +13,7 @@ ICON_COLOR = "#7c6cff"
 # ---- line icons (viewBox 0 0 24 24, stroke=currentColor) ----
 _LINE = {
     "open": '<path d="M3 7h5l2 2h11v10H3z"/>',
+    "copy": '<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
     "refresh": '<path d="M20 11a8 8 0 1 0-1.5 5.3"/><path d="M20 4v5h-5"/>',
     "select": '<rect x="3" y="4" width="7" height="7" rx="1.5"/><rect x="14" y="4" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M17 14v7M14 17h7"/>',
     "thumbnail": '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M3 17l5-4 4 3 3-2 6 5"/>',

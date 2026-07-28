@@ -138,8 +138,13 @@ QPushButton#secondary {{
     color: {text};
     border: 1px solid {border2};
     border-radius: {{r_md}};
-    padding: 5px 12px;
-    font-weight: 500;
+    padding: 7px 14px;
+    font-weight: 600;
+    font-size: 12px;
+    /* Ensure even short labels produce a clearly tappable button height
+       (was ~20px and read as flat text in dark mode). */
+    min-height: 20px;
+    text-align: left;
 }}
 QPushButton#secondary:hover {{ background: {bg2}; border: 1px solid {muted2}; color: {accent}; }}
 QPushButton#secondary:pressed {{ background: {border}; }}
@@ -363,6 +368,24 @@ QTextEdit, QPlainTextEdit {{
     border-radius: {{r_md}};
     padding: 8px;
     color: {text};
+}}
+
+/* Inspector note — must read clearly as an editable input (the generic
+   QTextEdit border was too subtle in dark mode, so users thought the
+   "..." placeholder was a non-interactive label). Stronger border,
+   visible background, and a clear focus state. */
+QTextEdit#inspnote {{
+    background: {panel2};
+    border: 1.5px solid {border2};
+    border-radius: {{r_md}};
+    padding: 10px 12px;
+    color: {text};
+    selection-background-color: {accent};
+    selection-color: #ffffff;
+}}
+QTextEdit#inspnote:focus {{
+    border: 1.5px solid {accent};
+    background: {bg};
 }}
 
 /* ---------- labels ---------- */
