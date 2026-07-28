@@ -374,7 +374,7 @@ QPushButton#primary:pressed {{ background: {accent_pressed}; color: #ffffff; }}
 QPushButton#toolbarprimary {{
     background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
         stop:0 {accent}, stop:1 {accent2});
-    color: #ffffff;
+    color: {text};
     border: none;
     border-radius: {r_md};
     padding: 5px 10px;
@@ -382,8 +382,8 @@ QPushButton#toolbarprimary {{
 }}
 QPushButton#toolbarprimary:hover {{ background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
         stop:0 {accent_hover}, stop:1 #00b8ff);
-    color: #ffffff; }}
-QPushButton#toolbarprimary:pressed {{ background: {accent_pressed}; color: #ffffff; }}
+    color: {text}; }}
+QPushButton#toolbarprimary:pressed {{ background: {accent_pressed}; color: {text}; }}
 
 /* ---------- line edits ---------- */
 /* Inspector fields (tag input, note editor) sit on dock_bg (#161b22 dark /

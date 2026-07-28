@@ -1889,8 +1889,11 @@ class MainWindow(QMainWindow):
         # is NOT updated by the global qapp.setStyleSheet round-trip).
         for _c in getattr(self, "_filter_combos", []):
             self._round_combo(_c)
-        # Re-apply search box rounded style (cleared by global QSS reset)
+        # Re-apply search box + inspector tag input rounded styles (cleared
+        # by global QSS reset — per-widget setStyleSheet is NOT auto-updated).
         self._round_lineedit(self.search)
+        if hasattr(self, "insp_tag_input"):
+            self._round_lineedit(self.insp_tag_input)
         # details table reads its palette via the global #detailstable token
         self._update_insp_row_labels()
         if self._current_asset:
