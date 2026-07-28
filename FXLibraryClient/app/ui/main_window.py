@@ -24,7 +24,7 @@ from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                                QGraphicsDropShadowEffect, QSizePolicy,
                                QListView)
 from PySide6.QtCore import (Qt, QPoint, QRect, QTimer, QSize, Signal, QEvent,
-                            QPropertyAnimation, QEasingCurve)
+                            QPropertyAnimation, QEasingCurve, QObject)
 from PySide6.QtGui import (QPixmap, QIcon, QImage, QColor, QPainter, QFont,
                             QPen, QKeySequence, QShortcut)
 
@@ -338,6 +338,40 @@ class MainWindow(QMainWindow):
     def tok(self):
         """Active theme token set for the main window."""
         return THEMES.get(self.theme, THEMES["light"])
+
+    # ---------- tooltip fix ----------
+    # On Windows, QToolTip is a separate top-level window that often ignores
+    # the global QSS and renders with a native black background.  This event
+    # filter intercepts Show events on the tooltip widget and forces our themed
+    # stylesheet so it adapts to light/dark mode.
+    class _ToolTipFix(QObject):
+        def __init__(self, parent=None):
+            super().__init__(parent)
+            self._qss = ""
+
+        def set_qss(self, qss):
+            self._qss = qss
+
+        def eventFilter(self, obj, event):
+            if event.type() == QEvent.Type.Show:
+                try:
+                    obj.setStyleSheet(self._qss)
+                except Exception:
+                    pass
+            return super().eventFilter(obj, event)
+
+    def _install_tooltip_fix(self):
+        qapp = QApplication.instance()
+        if not hasattr(self, "_tooltip_fix"):
+            self._tooltip_fix = self._ToolTipFix(self)
+            # Filter on the *tooltip widget* itself (created per-show by Qt).
+            tip = qapp.findChild(type(qapp.toolTipWidget())()) if hasattr(qapp, "toolTipWidget") else None
+            if tip is not None:
+                tip.installEventFilter(self._tooltip_fix)
+            else:
+                # Fallback: install on qapp so we catch every Show event.
+                qapp.installEventFilter(self._tooltip_fix)
+        self._tooltip_fix.set_qss(get_stylesheet(self.theme))
 
     def _start_engine_backfill(self):
         """Kick off a one-shot background backfill of ``engine_version`` for
@@ -1873,6 +1907,9 @@ class MainWindow(QMainWindow):
         # dark, or vice versa.
         qapp.setStyleSheet("")
         qapp.setStyleSheet(get_stylesheet(theme))
+        # Fix Windows tooltip black-background bug: QToolTip is a separate
+        # top-level window that ignores the global QSS on some platforms.
+        self._install_tooltip_fix()
         # Belt-and-suspenders: re-polish every visible top-level window so
         # cached style state on its child widgets also refreshes.
         for w in qapp.topLevelWidgets():
