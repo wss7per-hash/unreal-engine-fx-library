@@ -60,10 +60,9 @@ QWidget {{
    The previous version drew a 2px solid accent outline + 2px offset on every
    focused button. After clicking any toolbar button, you got a harsh purple
    ring around it that read as "I have a problem" rather than "I'm focused".
-   The new style keeps a 2px outline ring ONLY for the gradient CTAs (where
-   it's actually needed to show focus because the button is already accent-
-   colored), and for every other button the focus is shown by recoloring the
-   existing border to accent + a tiny background tint. */
+   The new style keeps a 2px outline ring ONLY for inputs (no border to
+   recolor). Every button — including the gradient CTAs and the sidebar
+   `libbtn` — shows focus via a contrasting inner border instead. */
 QPushButton#act:focus, QPushButton#secondary:focus, QPushButton#lang:focus,
 QPushButton#danger:focus, QPushButton#batchbtn:focus,
 QPushButton#batchbtnprimary:focus, QPushButton#batchbtndanger:focus {{
@@ -85,12 +84,21 @@ QPushButton#seg:focus, QPushButton#tag:focus, QPushButton#nav:focus {{
     color: {accent};
     outline: none;
 }}
-/* Primary gradient CTAs: keep the outer outline ring — the button is
-   already accent-colored so a focus state must come from outside. */
+/* Sidebar library selector (`我的库`) — same subtle treatment so it doesn't
+   draw an accent outline ring after click. */
+QPushButton#libbtn:focus {{
+    background: {panel2};
+    color: {text};
+    outline: none;
+}}
+/* Gradient CTAs (`#primary`, `#toolbarprimary`, `#inspexp`) and any other
+   button: drop the 2px outer outline ring (the user finds it an "ugly blue
+   selection box"). Use a contrasting white inner border instead so keyboard
+   focus is still visible without the outer halo. */
 QPushButton:focus, QPushButton#primary:focus, QPushButton#toolbarprimary:focus,
 QPushButton#inspexp:focus {{
-    outline: 2px solid {accent};
-    outline-offset: 2px;
+    border: 2px solid #ffffff;
+    outline: none;
 }}
 /* Star rating + card fav: never show focus ring (they're tap targets, not form fields) */
 QPushButton#star:focus {{ outline: none; }}
@@ -169,9 +177,12 @@ QPushButton#secondary {{
     font-weight: 600;
     font-size: 12px;
     /* Ensure even short labels produce a clearly tappable button height
-       (was ~20px and read as flat text in dark mode). */
+       (was ~20px and read as flat text in dark mode). Center-align the
+       text so the icon+label row reads as a real action button, not a
+       navigation list item (left-aligned text + left-icon looked like a
+       menu with right arrows). */
     min-height: 20px;
-    text-align: left;
+    text-align: center;
 }}
 QPushButton#secondary:hover {{ background: {bg2}; border: 1px solid {muted2}; color: {accent}; }}
 QPushButton#secondary:pressed {{ background: {border}; }}
@@ -402,8 +413,8 @@ QTextEdit, QPlainTextEdit {{
    "..." placeholder was a non-interactive label). Stronger border,
    visible background, and a clear focus state. */
 QTextEdit#inspnote {{
-    background: {panel2};
-    border: 1.5px solid {border2};
+    background: {bg2};
+    border: 2px solid {border};
     border-radius: {{r_md}};
     padding: 10px 12px;
     color: {text};
@@ -411,7 +422,7 @@ QTextEdit#inspnote {{
     selection-color: #ffffff;
 }}
 QTextEdit#inspnote:focus {{
-    border: 1.5px solid {accent};
+    border: 2px solid {accent};
     background: {bg};
 }}
 

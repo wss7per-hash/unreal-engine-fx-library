@@ -871,6 +871,68 @@ try:
     else:
         bad("focus_subtle_on_act",
             "#act/:focus rule missing from style.py")
+    # ROUND-20: #libbtn (sidebar '我的库') must have a :focus rule with
+    # outline: none — otherwise it falls through to QPushButton:focus
+    # and the user sees the "ugly blue selection box" after clicking it.
+    if "QPushButton#libbtn:focus" in style_text:
+        _lib_focus_idx = style_text.find("QPushButton#libbtn:focus")
+        _lib_focus_end = style_text.find("}}", _lib_focus_idx)
+        _lib_focus_block = style_text[_lib_focus_idx:_lib_focus_end if _lib_focus_end > 0 else _lib_focus_idx + 600]
+        if "outline: none" in _lib_focus_block:
+            ok("focus_subtle_on_libbtn",
+               "#libbtn/:focus has outline:none (no accent ring)")
+        else:
+            bad("focus_subtle_on_libbtn",
+                "#libbtn/:focus should set outline: none. Block: %r" % _lib_focus_block[:300])
+    else:
+        bad("focus_subtle_on_libbtn",
+            "#libbtn/:focus rule missing — falls through to QPushButton:focus outer ring")
+    # ROUND-20: #toolbarprimary ('扫描目录') must NOT use the 2px outer
+    # outline ring. The user explicitly called it an "ugly blue selection
+    # box". The new rule uses a contrasting white inner border instead.
+    if "QPushButton#toolbarprimary:focus" in style_text:
+        _tbp_focus_idx = style_text.find("QPushButton#toolbarprimary:focus")
+        _tbp_focus_end = style_text.find("}}", _tbp_focus_idx)
+        _tbp_focus_block = style_text[_tbp_focus_idx:_tbp_focus_end if _tbp_focus_end > 0 else _tbp_focus_idx + 600]
+        if "outline: none" in _tbp_focus_block and "outline: 2px solid" not in _tbp_focus_block:
+            ok("focus_subtle_on_toolbarprimary",
+               "#toolbarprimary/:focus uses white inner border, no accent outer ring")
+        else:
+            bad("focus_subtle_on_toolbarprimary",
+                "#toolbarprimary/:focus should drop the 2px accent outline. Block: %r" % _tbp_focus_block[:300])
+    else:
+        bad("focus_subtle_on_toolbarprimary",
+            "#toolbarprimary/:focus rule missing")
+    # ROUND-20: #secondary (inspector action buttons) must NOT use
+    # text-align: left — left-aligned text + left-icon made the 7
+    # action buttons read as a navigation menu list rather than
+    # action buttons. They should be center-aligned (or use default).
+    if "QPushButton#secondary" in style_text:
+        _sec_idx = style_text.find("QPushButton#secondary {")
+        _sec_end = style_text.find("}}", _sec_idx)
+        _sec_block = style_text[_sec_idx:_sec_end if _sec_end > 0 else _sec_idx + 800]
+        if "text-align: left" in _sec_block:
+            bad("secondary_center_aligned",
+                "#secondary still has text-align: left (reads as menu items, not buttons)")
+        else:
+            ok("secondary_center_aligned",
+               "#secondary is not text-align: left (reads as action buttons)")
+    else:
+        bad("secondary_center_aligned", "#secondary rule missing from style.py")
+    # ROUND-20: #inspnote border must be 2px (was 1.5px and nearly invisible
+    # in dark mode — the user couldn't tell the '...' was an input).
+    if "QTextEdit#inspnote {" in style_text:
+        _note_idx = style_text.find("QTextEdit#inspnote {")
+        _note_end = style_text.find("}}", _note_idx)
+        _note_block = style_text[_note_idx:_note_end if _note_end > 0 else _note_idx + 600]
+        if "border: 2px solid" in _note_block:
+            ok("inspnote_visible_border",
+               "#inspnote uses 2px border (visible in dark mode)")
+        else:
+            bad("inspnote_visible_border",
+                "#inspnote should use 2px border to be visible in dark mode. Block: %r" % _note_block[:300])
+    else:
+        bad("inspnote_visible_border", "#inspnote rule missing")
     # ROUND-19: inspector action buttons are in a single column (no
     # QGridLayout that mixes 2-col + 1-col rows).
     if "actions = QGridLayout()" in mw_src:
