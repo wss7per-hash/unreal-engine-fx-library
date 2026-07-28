@@ -3,7 +3,7 @@
 from PySide6.QtWidgets import (QFormLayout,
                                QVBoxLayout, QHBoxLayout,
                                QDialogButtonBox, QComboBox, QCheckBox,
-                               QLineEdit, QPushButton, QFileDialog, QLabel)
+                               QLabel)
 from PySide6.QtCore import Qt
 
 from app import config as cfg
@@ -43,17 +43,6 @@ class SettingsDialog(BaseDialog):
         self.skip_import_chk = QCheckBox(tr("skip_import_dialog"))
         self.skip_import_chk.setChecked(bool(self.cfg.get("skip_import_dialog", False)))
 
-        self.ue_edit = QLineEdit()
-        self.ue_edit.setPlaceholderText(tr("settings_ue_placeholder"))
-        self.ue_edit.setText(self.cfg.get("ue_editor_path", ""))
-        self.ue_btn = QPushButton(tr("browse"))
-        self.ue_btn.setObjectName("secondary")
-        self.ue_btn.clicked.connect(self._browse_ue)
-        ue_row = QHBoxLayout()
-        ue_row.setSpacing(8)
-        ue_row.addWidget(self.ue_edit, 1)
-        ue_row.addWidget(self.ue_btn)
-
         form = QFormLayout()
         form.setSpacing(14)
         form.setLabelAlignment(Qt.AlignRight)
@@ -61,7 +50,6 @@ class SettingsDialog(BaseDialog):
         form.addRow("", self.skip_import_chk)
         form.addRow(tr("theme"), self.theme_combo)
         form.addRow(tr("language"), self.lang_combo)
-        form.addRow(tr("settings_ue_path"), ue_row)
 
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         # Give the box buttons the app's design-system identities — without an
@@ -93,18 +81,10 @@ class SettingsDialog(BaseDialog):
         bottom.addWidget(buttons)
         layout.addLayout(bottom)
 
-    def _browse_ue(self):
-        path, _ = QFileDialog.getOpenFileName(
-            self, tr("select_ue_editor"), self.ue_edit.text(),
-            "UnrealEditor (UnrealEditor.exe);;Executable (*.exe)")
-        if path:
-            self.ue_edit.setText(path)
-
     def accept(self):
         self.cfg["import_fx_only"] = self.fx_only_chk.isChecked()
         self.cfg["skip_import_dialog"] = self.skip_import_chk.isChecked()
         self.cfg["language"] = self.lang_combo.currentData() or "auto"
         self.cfg["theme"] = self.theme_combo.currentData() or "auto"
-        self.cfg["ue_editor_path"] = self.ue_edit.text().strip()
         cfg.save(self.cfg)
         super().accept()

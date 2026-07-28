@@ -1,5 +1,5 @@
 # tools/qa_audit.py -- senior-user QA audit, runs fully offline.
-import os, sys, io, time, tempfile, shutil, json, zipfile, threading, traceback, faulthandler, re
+import os, sys, io, time, tempfile, shutil, json, zipfile, threading, traceback, faulthandler, re, inspect
 faulthandler.enable()
 LOG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "qa_report.txt")
 open(LOG, "w").close()
@@ -733,6 +733,30 @@ try:
         ok("bp_purge_method", "Database.purge_blueprints() exists")
     else:
         bad("bp_purge_method", "Database.purge_blueprints() missing")
+
+    # ROUND-24: combo/lineedit use theme tokens (not hardcoded dark hex)
+    _src = inspect.getsource(win._round_combo)
+    if "#161b22" in _src or "#11161d" in _src:
+        bad("combo_uses_tokens", "_round_combo still has hardcoded dark hex")
+    elif "self.tok()" in _src or 't = self.tok()' in _src or "t[" in _src:
+        ok("combo_uses_tokens", "_round_combo uses theme tokens")
+    else:
+        bad("combo_uses_tokens", "_round_combo token usage unclear")
+    _src2 = inspect.getsource(win._round_lineedit)
+    if "#11161d" in _src2 or "#161b22" in _src2:
+        bad("lineedit_uses_tokens", "_round_lineedit still has hardcoded dark hex")
+    elif "self.tok()" in _src2 or 't = self.tok()' in _src2 or "t[" in _src2:
+        ok("lineedit_uses_tokens", "_round_lineedit uses theme tokens")
+    else:
+        bad("lineedit_uses_tokens", "_round_lineedit token usage unclear")
+
+    # ROUND-24: settings dialog no longer has UE path field
+    from app.ui.settings_dialog import SettingsDialog as _SD
+    _sd = _SD()
+    if hasattr(_sd, "ue_edit"):
+        bad("settings_no_ue_path", "SettingsDialog still has ue_edit")
+    else:
+        ok("settings_no_ue_path", "SettingsDialog UE path removed")
 
     # Verify the bridge subprocess is launched headless and hidden on Windows.
     try:

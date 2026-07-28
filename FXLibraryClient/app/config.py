@@ -11,7 +11,6 @@ CONFIG_FILE = os.path.join(CONFIG_DIR, "config.json")
 DEFAULT_LIBRARY_DIR = os.path.join(CONFIG_DIR, "library")
 
 DEFAULTS = {
-    "ue_editor_path": "",   # absolute path to UnrealEditor.exe (optional, for thumbnail rendering)
     "library_dir": DEFAULT_LIBRARY_DIR,  # the standalone FX library root
     "last_project": "",     # optional .uproject used only to render real thumbnails
     "scan_roots": [],       # directories the "auto-scan" feature searches

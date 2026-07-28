@@ -40,7 +40,7 @@ from app.ui.asset_grid import (AssetGrid, _crop_to_square, _placeholder,
 from app.ui.log_panel import LogPanel
 from app.ui.settings_dialog import SettingsDialog
 from app.ui.base_dialog import BaseDialog
-from app.style import get_stylesheet, resolve_theme
+from app.style import get_stylesheet, resolve_theme, THEMES
 from app.i18n import tr, reset_language_cache
 from app.icons import icon, app_icon, type_glyph_pixmap
 from app.version import __version__ as _APP_VER
@@ -334,6 +334,10 @@ class MainWindow(QMainWindow):
         self._set_busy(False)
         self._reload_library()
         self._start_engine_backfill()
+
+    def tok(self):
+        """Active theme token set for the main window."""
+        return THEMES.get(self.theme, THEMES["light"])
 
     def _start_engine_backfill(self):
         """Kick off a one-shot background backfill of ``engine_version`` for
@@ -1681,7 +1685,7 @@ class MainWindow(QMainWindow):
         widget.setGraphicsEffect(eff)
 
     def _round_combo(self, combo):
-        """Force rounded corners + dark popup on a QComboBox.
+        """Force rounded corners + themed popup on a QComboBox.
 
         On Windows (even with Fusion style), the global QSS border-radius is
         often ignored by the native combo-box paint engine.  Applying a
@@ -1689,82 +1693,79 @@ class MainWindow(QMainWindow):
         around this — the per-widget setStyleSheet takes priority over
         the global sheet and forces the custom paint path.
 
-        The popup container (QComboBoxPrivateContainer) is a separate
-        top-level window that gets a native white frame on Windows.  We
-        must style it explicitly to remove the white border.
+        Colors are resolved from self.tok() so the combo adapts to the
+        active light/dark theme instead of being locked to dark values.
         """
+        t = self.tok()
         view = QListView(combo)
         combo.setView(view)
 
         # --- Style the list view inside the popup ---
-        view.setStyleSheet("""
-            QListView {
-                background: #161b22;
-                color: #e6edf3;
-                border: 1px solid #272e38;
+        view.setStyleSheet(f"""
+            QListView {{
+                background: {t["input_bg"]};
+                color: {t["text"]};
+                border: 1px solid {t["border"]};
                 border-radius: 8px;
                 padding: 4px;
                 outline: none;
-            }
-            QListView::item {
+            }}
+            QListView::item {{
                 padding: 6px 10px;
                 border-radius: 4px;
-            }
-            QListView::item:selected {
-                background: #6d5df5;
+            }}
+            QListView::item:selected {{
+                background: {t["accent"]};
                 color: #ffffff;
-            }
-            QListView::item:hover {
-                background: rgba(109,93,245,.15);
-            }
+            }}
+            QListView::item:hover {{
+                background: {t["accent_tint"]};
+            }}
         """)
-        # Token values are resolved at apply_theme time; use hard-coded
-        # visual tokens that match the dark-theme defaults so the combo
-        # looks correct even before the first theme switch.
-        combo.setStyleSheet("""
-            QComboBox {
-                background: #161b22;
-                border: 1px solid #272e38;
+        combo.setStyleSheet(f"""
+            QComboBox {{
+                background: {t["input_bg"]};
+                border: 1px solid {t["border"]};
                 border-radius: 8px;
                 padding: 6px 10px;
                 min-height: 30px;
-                color: #e6edf3;
-            }
-            QComboBox:hover {
-                border: 1px solid #6d5df5;
-            }
-            QComboBox:focus {
-                border: 1px solid #6d5df5;
-            }
-            QComboBox::drop-down {
+                color: {t["text"]};
+            }}
+            QComboBox:hover {{
+                border: 1px solid {t["accent"]};
+            }}
+            QComboBox:focus {{
+                border: 1px solid {t["accent"]};
+            }}
+            QComboBox::drop-down {{
                 border: none;
                 border-top-right-radius: 8px;
                 border-bottom-right-radius: 8px;
                 width: 24px;
-            }
-            QComboBox::down-arrow {
+            }}
+            QComboBox::down-arrow {{
                 image: none;
                 border-left: 5px solid transparent;
                 border-right: 5px solid transparent;
-                border-top: 6px solid #8a95a5;
+                border-top: 6px solid {t["muted"]};
                 margin-right: 8px;
-            }
-            QComboBox QAbstractItemView {
-                background: #161b22;
-                color: #e6edf3;
-                border: 1px solid #272e38;
+            }}
+            QComboBox QAbstractItemView {{
+                background: {t["input_bg"]};
+                color: {t["text"]};
+                border: 1px solid {t["border"]};
                 border-radius: 8px;
-                selection-background-color: #6d5df5;
+                selection-background-color: {t["accent"]};
                 selection-color: #ffffff;
                 padding: 4px;
-            }
+            }}
         """)
 
         # --- Style the POPUP CONTAINER (removes white window frame) ---
         # The QComboBox popup is a separate top-level window (container).
         # On Windows it gets a native light/white frame unless we override.
         _container_ss = (
-            "* { background: #161b22; border: 1px solid #272e38; border-radius: 8px; }"
+            f"* {{ background: {t['input_bg']}; border: 1px solid {t['border']}; border-radius: 8px; }}"
         )
 
         def _style_container():
@@ -1810,14 +1811,18 @@ class MainWindow(QMainWindow):
         btn.setStyleSheet("border: 1px solid rgba(255,255,255,.08); border-radius: 8px;")
 
     def _round_lineedit(self, edit):
-        """Force rounded corners on a QLineEdit (search box)."""
+        """Force rounded corners on a QLineEdit (search box / tag input).
+
+        Uses self.tok() so the background adapts to light/dark theme.
+        """
+        t = self.tok()
         edit.setFixedHeight(36)
-        edit.setStyleSheet("""
-            background: #11161d;
-            border: 1px solid #272e38;
+        edit.setStyleSheet(f"""
+            background: {t["input_bg"]};
+            border: 1px solid {t["border"]};
             border-radius: 8px;
             padding: 4px 10px;
-            color: #e6edf3;
+            color: {t["text"]};
         """)
 
     def _batch_btn(self, text, primary=False, danger=False):
@@ -1842,8 +1847,8 @@ class MainWindow(QMainWindow):
 
     def _refresh_ue_state(self):
         """Silently detect whether a local UnrealEditor is available (used for
-        optional background real-thumbnail rendering). No UI is shown."""
-        self._ue_available = bool(ue_bridge.find_ue_editor(self.cfg.get("ue_editor_path", "")))
+        optional UE-bridge operations). Auto-probes common install paths."""
+        self._ue_available = bool(ue_bridge.find_ue_editor(""))
 
     def _set_busy(self, busy, msg=""):
         for w in (self.btn_add, self.search,
