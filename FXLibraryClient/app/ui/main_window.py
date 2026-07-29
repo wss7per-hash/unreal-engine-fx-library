@@ -1943,29 +1943,33 @@ class MainWindow(QMainWindow):
         self._round_lineedit(self.search)
         if hasattr(self, "insp_tag_input"):
             self._round_lineedit(self.insp_tag_input)
-        # ── Comprehensive container background refresh ──
+        # ── Structural container background refresh ──
         # On Windows, QFrame/QWidget/QStackedWidget do NOT paint their QSS
-        # background without WA_StyledBackground.  Even with that flag, some
-        # containers (splitter children, scroll viewports) fall back to the
-        # native white background after a theme switch.  We force-refresh every
-        # major structural container so light/dark both render correctly.
-        _tok = self.tok()
-        _bg = _tok["bg"]       # base window background
-        _bg2 = _tok["bg2"]     # panel / card background
-        # Sidebar (left panel)
+        # background without WA_StyledBackground.  We set that flag at build
+        # time.  Here we must ensure the global QSS objectName rules take effect:
+        #   • CLEAR any inline stylesheet (so it doesn't override global QSS)
+        #   • Then force-repolish so the global {bg}/{bg2} tokens paint.
+        # Using setStyleSheet("background:X") was COUNTERPRODUCTIVE: it replaced
+        # the entire global rule (border/gradient/etc.) with a single property,
+        # and on some Qt versions it still didn't paint reliably.
+        _containers = []
         if hasattr(self, "sidebar_frame"):
-            self.sidebar_frame.setStyleSheet("background:%s;" % _bg2)
-        # Main center area (card grid)
+            _containers.append(self.sidebar_frame)
         if hasattr(self, "main_area_frame"):
-            self.main_area_frame.setStyleSheet("background:%s;" % _bg)
+            _containers.append(self.main_area_frame)
         if hasattr(self, "content_stack"):
-            self.content_stack.setStyleSheet("background:%s;" % _bg)
-        # Inspector (right panel) inner container
+            _containers.append(self.content_stack)
         if hasattr(self, "insp_pad"):
-            self.insp_pad.setStyleSheet("background:%s;" % _bg2)
-        # Batch bar (bottom floating bar)
+            _containers.append(self.insp_pad)
         if hasattr(self, "batchbar"):
-            self.batchbar.setStyleSheet("background:%s; border:1px solid %s; border-radius:999px;" % (_bg2, _tok["border2"]))
+            _containers.append(self.batchbar)
+        for _c in _containers:
+            _c.setStyleSheet("")   # clear inline → let global QSS win
+            _c.style().unpolish(_c)
+            _c.style().polish(_c)
+            _c.update()
+        # Token set for per-widget refreshes below (icons, inspector labels)
+        _tok = self.tok()
         # Inspector button icons (set once at creation with theme token —
         # must refresh on switch or they stay dark-colored in light mode).
         for _name, _ic in (("insp_open", "open"), ("insp_copy", "copy"),

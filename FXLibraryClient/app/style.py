@@ -625,6 +625,9 @@ QFrame#mainarea {{
 QStackedWidget#contentstack {{
     background: {bg};
 }}
+QWidget#inspcontainer {{
+    background: {bg2};
+}}
 QFrame#navsection {{
     background: transparent;
 }}
