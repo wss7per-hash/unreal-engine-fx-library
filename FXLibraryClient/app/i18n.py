@@ -317,12 +317,6 @@ TRANSLATIONS = {
         "restore": "向下还原",
         "need_ue_for_thumb": "未检测到 Unreal Editor，无法生成真实播放缩略图。请在「设置」中配置 UE 路径。",
         "asset_not_in_project": "所选特效不在任何 UE 项目内，无法生成播放缩略图。",
-        # Theme
-        "theme": "主题",
-        "choose_theme": "选择主题",
-        "theme_auto": "跟随系统",
-        "theme_light": "浅色",
-        "theme_dark": "暗色",
         # Results
         "found": "个结果",
         # P0-A 导出 .fxpack
@@ -652,12 +646,6 @@ TRANSLATIONS = {
         "restore": "Restore",
         "need_ue_for_thumb": "No Unreal Editor detected; cannot generate real playing thumbnails. Set the UE path in Settings.",
         "asset_not_in_project": "The selected FX is not inside any UE project; cannot generate a playing thumbnail.",
-        # Theme
-        "theme": "Theme",
-        "choose_theme": "Choose theme",
-        "theme_auto": "System",
-        "theme_light": "Light",
-        "theme_dark": "Dark",
         # Results
         "found": " results",
         # P0-A Export .fxpack

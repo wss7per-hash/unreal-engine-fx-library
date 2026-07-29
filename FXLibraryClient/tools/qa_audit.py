@@ -495,8 +495,13 @@ try:
     try:
         from app.ui.settings_dialog import SettingsDialog
         d = SettingsDialog(win)
+        # App is dark-only: the theme toggle must be fully removed from Settings.
+        if hasattr(d, "theme_combo"):
+            bad("settings_no_theme_toggle",
+                "SettingsDialog still exposes a theme_combo (theme switch not removed)")
+        else:
+            ok("settings_no_theme_toggle", "no theme toggle in Settings (dark-only)")
         d.lang_combo.setCurrentIndex(1)
-        d.theme_combo.setCurrentIndex(2)
         d.accept()
         ok("settings", "ok")
     except Exception as e:

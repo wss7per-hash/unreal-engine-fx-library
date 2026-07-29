@@ -17,7 +17,7 @@ class TagManagerDialog(BaseDialog):
         self.theme = theme
         self.setWindowTitle(tr("tag_manager_title"))
         self.setMinimumWidth(440)
-        tok = THEMES.get(theme, THEMES["light"])
+        tok = THEMES.get(theme, THEMES["dark"])
 
         layout = QVBoxLayout(self)
         layout.setSpacing(12)
@@ -44,7 +44,7 @@ class TagManagerDialog(BaseDialog):
 
     def _refresh(self):
         self.list_widget.clear()
-        tok = THEMES.get(self.theme, THEMES["light"])
+        tok = THEMES.get(self.theme, THEMES["dark"])
         tags = self.db.all_tags_with_counts()
         if not tags:
             item = QListWidgetItem("（暂无标签）")

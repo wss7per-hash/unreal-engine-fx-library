@@ -16,7 +16,7 @@
 
 from PySide6.QtWidgets import QDialog, QApplication
 
-from app.style import THEMES, resolve_theme
+from app.style import THEMES
 
 
 class BaseDialog(QDialog):
@@ -27,12 +27,5 @@ class BaseDialog(QDialog):
             self.setStyleSheet(app.styleSheet())
 
     def tok(self):
-        """Active theme token set (falls back to the parent window's theme)."""
-        theme = getattr(self.parent(), "theme", None)
-        if theme not in ("light", "dark"):
-            try:
-                from app import config as cfg
-                theme = resolve_theme(cfg.load().get("theme", "auto"))
-            except Exception:
-                theme = "light"
-        return THEMES.get(theme, THEMES["light"])
+        """Active theme token set — the app is dark-only."""
+        return THEMES["dark"]

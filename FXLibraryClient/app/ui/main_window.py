@@ -40,7 +40,7 @@ from app.ui.asset_grid import (AssetGrid, _crop_to_square, _placeholder,
 from app.ui.log_panel import LogPanel
 from app.ui.settings_dialog import SettingsDialog
 from app.ui.base_dialog import BaseDialog
-from app.style import get_stylesheet, resolve_theme, THEMES
+from app.style import get_stylesheet, THEMES
 from app.i18n import tr, reset_language_cache
 from app.icons import icon, app_icon, type_glyph_pixmap
 from app.version import __version__ as _APP_VER
@@ -145,7 +145,7 @@ class LightboxDialog(QDialog):
 
     def _build(self, asset, theme):
         from app.style import THEMES
-        tok = THEMES.get(theme, THEMES["light"])
+        tok = THEMES.get(theme, THEMES["dark"])
         self.setStyleSheet("background:%s;" % tok["overlay"])
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
@@ -293,7 +293,7 @@ class MainWindow(QMainWindow):
         self.setAcceptDrops(True)
 
         self.cfg = cfg.load()
-        self.theme = resolve_theme(self.cfg.get("theme", "auto"))
+        self.theme = "dark"  # dark-only: no light/theme toggle
         self.lang = self.cfg.get("language", "auto")
         if self.lang not in ("zh", "en"):
             self.lang = "zh"
@@ -337,7 +337,7 @@ class MainWindow(QMainWindow):
 
     def tok(self):
         """Active theme token set for the main window."""
-        return THEMES.get(self.theme, THEMES["light"])
+        return THEMES.get(self.theme, THEMES["dark"])
 
     # ---------- tooltip fix ----------
     # On Windows, QToolTip is a separate top-level window that often ignores
@@ -555,7 +555,7 @@ class MainWindow(QMainWindow):
 
     def _build_sidebar(self):
         from app.style import THEMES
-        tok = THEMES.get(self.theme, THEMES["light"])
+        tok = THEMES.get(self.theme, THEMES["dark"])
         frame = QFrame()
         frame.setObjectName("sidebar")
         frame.setAttribute(Qt.WA_StyledBackground, True)
@@ -907,8 +907,6 @@ class MainWindow(QMainWindow):
 
     def _open_settings(self):
         from app.ui.settings_dialog import SettingsDialog
-        from app.style import resolve_theme
-        old_theme = self.theme
         old_lang = self.lang
         dlg = SettingsDialog(self)
         if dlg.exec():
@@ -927,9 +925,6 @@ class MainWindow(QMainWindow):
             new_lang = self.cfg.get("language", "auto")
             if new_lang in ("zh", "en") and new_lang != old_lang:
                 self._set_language(new_lang)
-            new_theme = resolve_theme(self.cfg.get("theme", "auto"))
-            if new_theme != old_theme:
-                self._apply_theme(new_theme, save=False)
             self._reload_library()
 
     def _toggle_log_dock(self, checked=None):
@@ -1026,7 +1021,7 @@ class MainWindow(QMainWindow):
 
         menu = QMenu(self.folder_tree)
         from app.style import THEMES
-        tok = THEMES.get(self.theme, THEMES["light"])
+        tok = THEMES.get(self.theme, THEMES["dark"])
         menu.setStyleSheet(
             "QMenu { background: %s; border: 1px solid %s; border-radius: 8px; padding: 6px; color: %s; }"
             "QMenu::separator { background: %s; height: 1px; margin: 4px 8px; }"
@@ -1098,7 +1093,7 @@ class MainWindow(QMainWindow):
 
     def _build_folder_tree(self):
         from app.style import THEMES
-        tok = THEMES.get(self.theme, THEMES["light"])
+        tok = THEMES.get(self.theme, THEMES["dark"])
 
         class _FolderTree(QTreeWidget):
             def __init__(self, win, *a, **k):
@@ -1532,14 +1527,14 @@ class MainWindow(QMainWindow):
         # and matches the file/folder/source rows above.
         self.insp_open = QPushButton("  " + tr("open_location_btn"))
         self.insp_open.setObjectName("secondary")
-        self.insp_open.setIcon(icon("open", THEMES.get(self.theme, THEMES["light"])["text"], 14))
+        self.insp_open.setIcon(icon("open", THEMES.get(self.theme, THEMES["dark"])["text"], 14))
         self.insp_open.setIconSize(QSize(14, 14))
         self.insp_open.clicked.connect(lambda: self._open_location(self._current_asset))
         self.insp_open.setToolTip(tr("open_location_btn"))
         pl.addWidget(self.insp_open)
         self.insp_copy = QPushButton("  " + tr("copy_path_btn"))
         self.insp_copy.setObjectName("secondary")
-        self.insp_copy.setIcon(icon("copy", THEMES.get(self.theme, THEMES["light"])["text"], 14))
+        self.insp_copy.setIcon(icon("copy", THEMES.get(self.theme, THEMES["dark"])["text"], 14))
         self.insp_copy.setIconSize(QSize(14, 14))
         self.insp_copy.clicked.connect(lambda: self._copy_path(self._current_asset))
         pl.addWidget(self.insp_copy)
@@ -1548,13 +1543,13 @@ class MainWindow(QMainWindow):
         # as open/copy above)
         self.insp_fav = QPushButton("  " + tr("add_fav"))
         self.insp_fav.setObjectName("secondary")
-        self.insp_fav.setIcon(icon("fav", THEMES.get(self.theme, THEMES["light"])["text"], 14))
+        self.insp_fav.setIcon(icon("fav", THEMES.get(self.theme, THEMES["dark"])["text"], 14))
         self.insp_fav.setIconSize(QSize(14, 14))
         self.insp_fav.clicked.connect(self._insp_toggle_fav)
         pl.addWidget(self.insp_fav)
         self.insp_set = QPushButton("  " + tr("set_thumb"))
         self.insp_set.setObjectName("secondary")
-        self.insp_set.setIcon(icon("thumbnail", THEMES.get(self.theme, THEMES["light"])["text"], 14))
+        self.insp_set.setIcon(icon("thumbnail", THEMES.get(self.theme, THEMES["dark"])["text"], 14))
         self.insp_set.setIconSize(QSize(14, 14))
         self.insp_set.clicked.connect(lambda: self._set_manual_thumb(self._current_asset))
         pl.addWidget(self.insp_set)
@@ -1582,7 +1577,7 @@ class MainWindow(QMainWindow):
 
     def _insp_row(self, label):
         from app.style import THEMES
-        tok = THEMES.get(self.theme, THEMES["light"])
+        tok = THEMES.get(self.theme, THEMES["dark"])
         row = QHBoxLayout()
         row.setSpacing(8)
         row.setAlignment(Qt.AlignLeft)
@@ -1594,7 +1589,7 @@ class MainWindow(QMainWindow):
 
     def _show_empty_inspector(self):
         from app.style import THEMES
-        tok = THEMES.get(self.theme, THEMES["light"])
+        tok = THEMES.get(self.theme, THEMES["dark"])
         self.insp_hero.setPixmap(QPixmap())
         self.insp_hero.setStyleSheet("background:%s; border-bottom:1px solid %s;" % (tok["bg"], tok["border"]))
         self.insp_title.setText(tr("no_asset"))
@@ -1633,7 +1628,7 @@ class MainWindow(QMainWindow):
 
     def _build_batchbar(self):
         from app.style import THEMES
-        tok = THEMES.get(self.theme, THEMES["light"])
+        tok = THEMES.get(self.theme, THEMES["dark"])
         bar = QFrame()
         bar.setObjectName("batchbar")
         bar.setAttribute(Qt.WA_StyledBackground, True)
@@ -1726,7 +1721,7 @@ class MainWindow(QMainWindow):
         eff.setXOffset(0.0)
         eff.setYOffset(float(y_off))
         if color is None:
-            color = QColor(10, 37, 64, alpha) if self.theme == "light" else QColor(0, 0, 0, alpha * 3)
+            color = QColor(0, 0, 0, alpha * 3)
         eff.setColor(color)
         widget.setGraphicsEffect(eff)
 
@@ -1983,13 +1978,10 @@ class MainWindow(QMainWindow):
             self._show_inspector(self._current_asset)
         else:
             self._show_empty_inspector()
-        if save:
-            self.cfg["theme"] = theme
-            cfg.save(self.cfg)
 
     def _update_insp_row_labels(self):
         from app.style import THEMES
-        tok = THEMES.get(self.theme, THEMES["light"])
+        tok = THEMES.get(self.theme, THEMES["dark"])
         for lbl in getattr(self, "_insp_row_labels", []):
             lbl.setStyleSheet("color:%s; font-size:12px; text-transform:uppercase; letter-spacing:.5px; min-width:60px;" % tok["muted2"])
 
@@ -2664,7 +2656,7 @@ class MainWindow(QMainWindow):
 
     def _show_inspector(self, asset):
         from app.style import THEMES
-        tok = THEMES.get(self.theme, THEMES["light"])
+        tok = THEMES.get(self.theme, THEMES["dark"])
 
         # hero
         pm = QPixmap()
@@ -3181,7 +3173,7 @@ class MainWindow(QMainWindow):
     def _on_asset_context(self, asset, pos):
         menu = QMenu(self)
         from app.style import THEMES
-        tok = THEMES.get(self.theme, THEMES["light"])
+        tok = THEMES.get(self.theme, THEMES["dark"])
         menu.setStyleSheet(
             "QMenu { background: %s; border: 1px solid %s; border-radius: 8px; padding: 6px; color: %s; }"
             "QMenu::separator { background: %s; height: 1px; margin: 4px 8px; }"

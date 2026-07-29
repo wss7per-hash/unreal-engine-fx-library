@@ -1,4 +1,4 @@
-# app/ui/settings_dialog.py -- configure language, theme and FX-only import.
+# app/ui/settings_dialog.py -- configure language and FX-only import.
 
 from PySide6.QtWidgets import (QFormLayout,
                                QVBoxLayout, QHBoxLayout,
@@ -28,15 +28,6 @@ class SettingsDialog(BaseDialog):
         if idx >= 0:
             self.lang_combo.setCurrentIndex(idx)
 
-        self.theme_combo = QComboBox()
-        self.theme_combo.addItem(tr("theme_auto"), "auto")
-        self.theme_combo.addItem(tr("theme_light"), "light")
-        self.theme_combo.addItem(tr("theme_dark"), "dark")
-        current_t = self.cfg.get("theme", "auto")
-        idx_t = self.theme_combo.findData(current_t)
-        if idx_t >= 0:
-            self.theme_combo.setCurrentIndex(idx_t)
-
         self.fx_only_chk = QCheckBox(tr("import_fx_only"))
         self.fx_only_chk.setChecked(bool(self.cfg.get("import_fx_only", True)))
 
@@ -48,7 +39,6 @@ class SettingsDialog(BaseDialog):
         form.setLabelAlignment(Qt.AlignRight)
         form.addRow(tr("import_fx_only"), self.fx_only_chk)
         form.addRow("", self.skip_import_chk)
-        form.addRow(tr("theme"), self.theme_combo)
         form.addRow(tr("language"), self.lang_combo)
 
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
@@ -85,6 +75,5 @@ class SettingsDialog(BaseDialog):
         self.cfg["import_fx_only"] = self.fx_only_chk.isChecked()
         self.cfg["skip_import_dialog"] = self.skip_import_chk.isChecked()
         self.cfg["language"] = self.lang_combo.currentData() or "auto"
-        self.cfg["theme"] = self.theme_combo.currentData() or "auto"
         cfg.save(self.cfg)
         super().accept()

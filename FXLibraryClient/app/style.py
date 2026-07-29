@@ -1,31 +1,7 @@
-# app/style.py -- light/dark QSS for the FX Library client.
-# Mirrors the HTML prototype's Stripe-like light theme + professional dark theme.
-
-from PySide6.QtWidgets import QApplication
-from PySide6.QtCore import Qt
-
+# app/style.py -- dark-only QSS for the FX Library client.
+# The light theme was removed; the app is dark-only.
 
 THEMES = {
-    "light": {
-        "bg": "#f6f8fb", "bg2": "#ffffff", "panel": "#ffffff", "panel2": "#f1f4f9",
-        "card": "#ffffff", "card_hover": "#ffffff", "card_sel": "#eef0ff",
-        "border": "#e6e9ef", "border2": "#d3d9e3",
-        "text": "#0a2540", "muted": "#5a6b82", "muted2": "#64748b",
-        "accent": "#635bff", "accent2": "#00a3ff",
-        "accent_hover": "#736aff", "accent_pressed": "#4338ca",
-        "accent_tint": "rgba(99,91,255,0.10)",
-        "input_bg": "#ffffff", "scroll": "#cdd5e0", "scroll_hover": "#b6c0cf",
-        "log_bg": "#0b1220", "log_text": "#e6edf3", "log_border": "#1b2740",
-        "dock_bg": "#ffffff", "dock_title": "#f3f4f6",
-        "shadow": "rgba(10,37,64,0.10)",
-        "shadow_sm": "rgba(10,37,64,0.06)",
-        "shadow_md": "rgba(10,37,64,0.12)",
-        "shadow_lg": "rgba(10,37,64,0.18)",
-        "overlay": "rgba(10,37,64,0.55)",
-        "ok": "#1aa179", "warn": "#f5a623", "bad": "#e25950",
-        "amber": "#f5a623", "purple": "#7a5af8",
-        "r_sm": "6px", "r_md": "12px", "r_lg": "16px", "r_pill": "999px",
-    },
     "dark": {
         "bg": "#0e1116", "bg2": "#161b22", "panel": "#161b22", "panel2": "#1c222b",
         "card": "#1a2029", "card_hover": "#20272f", "card_sel": "rgba(124,108,255,0.12)",
@@ -930,17 +906,10 @@ QLabel#herometa {{
 
 
 def resolve_theme(theme="auto"):
-    if theme in ("light", "dark"):
-        return theme
-    try:
-        app = QApplication.instance()
-        if app is not None and app.styleHints().colorScheme() == Qt.ColorScheme.Dark:
-            return "dark"
-    except Exception:
-        pass
-    return "light"
+    """App is dark-only; always resolve to the dark theme."""
+    return "dark"
 
 
-def get_stylesheet(theme="light"):
-    p = THEMES.get(theme, THEMES["light"])
+def get_stylesheet(theme="dark"):
+    p = THEMES.get(theme, THEMES["dark"])
     return _TEMPLATE.format(**p)

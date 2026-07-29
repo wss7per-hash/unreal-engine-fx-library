@@ -18,7 +18,6 @@ DEFAULTS = {
     "import_fx_only": True,  # skip non-FX (.uasset that is neither Niagara nor Cascade)
     "ue_bridge_dir": "",    # optional override of the bundled bridge/ folder
     "language": "auto",     # "auto" | "zh" | "en"
-    "theme": "auto",        # "auto" | "light" | "dark"
 }
 
 

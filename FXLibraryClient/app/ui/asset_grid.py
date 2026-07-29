@@ -247,7 +247,7 @@ class AssetCard(QWidget):
             self._card_w, self._thumb_h = VIEW_SIZES.get(view_mode, VIEW_SIZES["medium"])
             self._thumb_w = self._card_w
         self._fav = getattr(asset, "favorite", False) or False
-        self._theme = "light"
+        self._theme = "dark"
         if self._card_w:
             self.setFixedWidth(self._card_w)
         else:
@@ -275,7 +275,7 @@ class AssetCard(QWidget):
     # blur/offset is animated on hover gives the card genuine depth + a 160ms
     # ease, turning a static grid into a tactile one.
     def _setup_hover_lift(self):
-        tok = THEMES.get(self._theme, THEMES["light"])
+        tok = THEMES.get(self._theme, THEMES["dark"])
         eff = QGraphicsDropShadowEffect(self)
         eff.setBlurRadius(10.0)
         eff.setXOffset(0.0)
@@ -366,7 +366,7 @@ class AssetCard(QWidget):
             child.setAttribute(Qt.WA_TransparentForMouseEvents, True)
 
         # selection highlight border (painted in paintEvent)
-        self._sel_color = QColor(THEMES.get(self._theme, THEMES["light"])["accent"])
+        self._sel_color = QColor(THEMES.get(self._theme, THEMES["dark"])["accent"])
 
         # ---- body ----
         # CRITICAL: body itself must be mouse-transparent. The QLabels
@@ -411,7 +411,7 @@ class AssetCard(QWidget):
         self._refresh_tag_text()
         meta.addWidget(self.chip)
         if getattr(self.asset, "blueprint", False):
-            tok = THEMES.get(self._theme, THEMES["light"])
+            tok = THEMES.get(self._theme, THEMES["dark"])
             self.bp_chip = QLabel(tr("bp_badge"))
             self.bp_chip.setToolTip(tr("bp_tip"))
             self.bp_chip.setObjectName("cardbpchip")
@@ -500,13 +500,12 @@ class AssetCard(QWidget):
             if b:
                 self._shadow.setBlurRadius(28.0)
                 self._shadow.setYOffset(9.0)
-                col = QColor(99, 91, 255, 90) if self._theme == "light" else QColor(0, 0, 0, 175)
+                col = QColor(0, 0, 0, 175)
                 self._shadow.setColor(col)
             else:
                 self._shadow.setBlurRadius(10.0)
                 self._shadow.setYOffset(2.0)
-                self._shadow.setColor(QColor(15, 23, 42, 40) if self._theme == "light"
-                                      else QColor(0, 0, 0, 110))
+                self._shadow.setColor(QColor(0, 0, 0, 110))
         if b:
             self.tier.hide()
         else:
@@ -524,14 +523,13 @@ class AssetCard(QWidget):
 
     def set_theme(self, theme):
         self._theme = theme
-        tok = THEMES.get(theme, THEMES["light"])
+        tok = THEMES.get(theme, THEMES["dark"])
         self._sel_color = QColor(tok["accent"])
         self.name.setStyleSheet("font-weight:600; font-size:13px; color:%s;" % tok["text"])
         self.tag.setStyleSheet("color:%s; font-size:12px" % tok["muted"])
         if hasattr(self, "_shadow"):
             # deeper, more opaque shadow reads better on dark surfaces
-            self._shadow.setColor(QColor(0, 0, 0, 110) if theme == "dark"
-                                  else QColor(15, 23, 42, 40))
+            self._shadow.setColor(QColor(0, 0, 0, 110))
         if self._selected:
             self.set_selected(True)
 
@@ -618,7 +616,7 @@ class AssetCard(QWidget):
         p.setRenderHint(QPainter.Antialiasing)
         r = 16
         # brighten wash (lighten the card surface on selection)
-        wash = 26 if self._theme == "light" else 18
+        wash = 18
         p.setBrush(QColor(255, 255, 255, wash))
         p.setPen(Qt.NoPen)
         path = QPainterPath()
@@ -727,7 +725,7 @@ class AssetGrid(QScrollArea):
         # usable on libraries with tens of thousands of .uasset files.
         self._live = {}            # index -> AssetCard (visible only)
         self.assets = []           # full source-of-truth list (windowed)
-        self._theme = "light"
+        self._theme = "dark"
         self._anchor_index = -1
         self._selected = set()     # object_path strings (survives windowing)
         self._rubber = QRubberBand(QRubberBand.Rectangle, self.content)
@@ -930,7 +928,7 @@ class AssetGrid(QScrollArea):
         with QPainter (no external SVG asset needed). A dashed 'canvas' frame
         with a stacked-asset glyph + accent sparkles reads warmer than bare
         text and stays crisp at any DPI."""
-        tok = THEMES.get(theme, THEMES["light"])
+        tok = THEMES.get(theme, THEMES["dark"])
         accent = QColor(tok["accent"])
         muted = QColor(tok.get("muted", "#94a3b8"))
         W, H = 140, 116
